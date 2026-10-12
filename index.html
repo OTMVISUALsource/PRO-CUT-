@@ -154,6 +154,15 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .pane{padding:16px;display:grid;gap:18px}
 .ptitle{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:800;font-stretch:130%;font-variation-settings:"wdth" 130;text-transform:uppercase;font-size:13px;letter-spacing:.04em}
 .ptitle .tag{margin-left:auto}
+.sidehead{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font:600 10.5px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.vchip{color:var(--accent);border:1px solid rgba(244,181,63,.35);background:var(--accent-soft);padding:5px 8px;border-radius:999px;letter-spacing:.08em}
+.fine{border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:0 14px}
+.fine summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 0;font-weight:600;font-size:13px}
+.fine summary::-webkit-details-marker{display:none}
+.fine summary>span:first-child{white-space:nowrap}.fine summary .hint{flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fine summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-left:6px;transition:transform .2s}
+.fine[open] summary::after{transform:rotate(-135deg)}
+.fine[open]{padding-bottom:14px}.fine .field{margin-top:10px}
 .field{display:grid;gap:8px}
 .flabel{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:600;font-size:13px}
 .flabel output{font:500 12px/1 var(--f-mono);color:var(--accent);font-variant-numeric:tabular-nums}
@@ -225,7 +234,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 </style>
 <script>
 /* startup safety net: if anything stops the app from starting, show the reason on screen instead of a blank page */
-window.PROCUT_VERSION='6.2';
+window.PROCUT_VERSION='7.0';
 window.addEventListener('error',function(e){try{if(window.PROCUT_READY)return;var b=document.getElementById('bootErr');if(!b){b=document.createElement('div');b.id='bootErr';
   b.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:99;background:#3a1416;color:#ffd9d6;border:1px solid #e2615a;border-radius:12px;padding:12px 14px;font:13px/1.4 -apple-system,sans-serif';document.body.appendChild(b)}
   b.textContent='PRO CUT couldn\'t start: '+(e.message||'script error')+' (line '+(e.lineno||'?')+'). The file may have been cut off while pasting. Re-upload index.html.'}catch(_){}});
@@ -356,6 +365,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
   </section>
 
   <aside class="side">
+    <div class="sidehead"><span>Inspector</span><span class="vchip" id="vchip">PRO CUT v7.0</span></div>
     <nav class="tabs" role="tablist">
       <button class="on" data-tab="cut"><svg class="ico"><use href="#i-blade"/></svg>Cut</button>
       <button data-tab="voice"><svg class="ico"><use href="#i-voice"/></svg>Voice</button>
@@ -378,6 +388,11 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
         <input type="range" id="rPad" min="0" max="0.4" step="0.01" value="0.15">
       </div>
       <div class="field">
+        <div class="flabel"><label for="rXf">Smooth cut (crossfade)</label><output id="oXf">50 ms</output></div>
+        <input type="range" id="rXf" min="0" max="150" step="5" value="50">
+        <div class="fhelp">Blends the sound across each cut so jumps feel natural, not robotic.</div>
+      </div>
+      <div class="field">
         <div class="flabel"><label for="rLvl">Silence level</label><output id="oLvl">0 dB</output></div>
         <input type="range" id="rLvl" min="-10" max="10" step="1" value="0">
         <div class="fhelp">Raise it if a noisy room hides your pauses. Lower it if quiet words get cut.</div>
@@ -395,16 +410,28 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
       <div class="field">
         <div class="flabel">Voice tone</div>
         <div class="seg" data-set="voice"><button data-v="off">Off</button><button data-v="natural">Natural</button><button data-v="krispy" class="on">Krispy</button><button data-v="broadcast">Radio</button></div>
-        <div class="fhelp" id="vHelp">Bright, close and punchy. Extra presence and air with firm leveling.</div>
+        <div class="fhelp" id="vHelp"></div>
       </div>
       <div class="field">
-        <div class="flabel">Noise reduction</div>
+        <div class="flabel">Noise removal</div>
         <div class="seg" data-set="nr"><button data-v="off">Off</button><button data-v="light">Light</button><button data-v="medium" class="on">Medium</button><button data-v="strong">Strong</button></div>
-        <div class="fhelp" id="nrHelp">Separates your voice from traffic, wind, hum and room noise, then mutes the background between words.</div>
       </div>
+      <div class="row"><div><div class="flabel">Voice only</div><div class="fhelp" style="margin:2px 0 0">Mute everything that isn’t a human voice: cars, wind, music, hum</div></div><button class="sw on" id="swVO" role="switch" aria-checked="true" aria-label="Voice only"></button></div>
+      <details class="fine" id="fineV" open>
+        <summary><span>Fine-tune</span><span class="hint">Every preset is just a starting point</span></summary>
+        <div class="field"><div class="flabel"><label for="tNr">Noise removal amount</label><output id="oNr"></output></div><input type="range" id="tNr" min="0" max="100" step="1" data-k="nrAmt"></div>
+        <div class="field"><div class="flabel"><label for="tWarm">Warmth</label><output id="oWarm"></output></div><input type="range" id="tWarm" min="-4" max="6" step=".5" data-t="warm" data-u="dB"></div>
+        <div class="field"><div class="flabel"><label for="tMud">Mud cut</label><output id="oMud"></output></div><input type="range" id="tMud" min="-8" max="0" step=".5" data-t="mud" data-u="dB"></div>
+        <div class="field"><div class="flabel"><label for="tPres">Clarity</label><output id="oPres"></output></div><input type="range" id="tPres" min="-3" max="8" step=".5" data-t="pres" data-u="dB"></div>
+        <div class="field"><div class="flabel"><label for="tAir">Air &amp; crisp</label><output id="oAir"></output></div><input type="range" id="tAir" min="-3" max="9" step=".5" data-t="air" data-u="dB"></div>
+        <div class="field"><div class="flabel"><label for="tDe">De-ess (tames harsh “s”)</label><output id="oDe"></output></div><input type="range" id="tDe" min="0" max="100" step="1" data-t="deess"></div>
+        <div class="field"><div class="flabel"><label for="tLev">Leveling (compression)</label><output id="oLev"></output></div><input type="range" id="tLev" min="0" max="100" step="1" data-t="lev"></div>
+        <div class="field"><div class="flabel"><label for="tSat">Analog warmth</label><output id="oSat"></output></div><input type="range" id="tSat" min="0" max="100" step="1" data-t="sat"></div>
+        <div class="field"><div class="flabel"><label for="tLufs">Loudness</label><output id="oLufs"></output></div><input type="range" id="tLufs" min="-20" max="-9" step=".5" data-t="lufs" data-u="LUFS"></div>
+      </details>
       <button class="btn primary wide" id="bApply" disabled><svg class="ico"><use href="#i-voice"/></svg><span>Voice is up to date</span></button>
       <div class="bigp" id="vProg" hidden><div class="bar-p"><i></i></div></div>
-      <div class="note">Use <b>Before / After</b> under the video to compare. Headphones help you hear the difference.</div>
+      <div class="note">Use <b>Before / After</b> under the video to compare. Headphones show the difference best. Instagram plays at about −14 LUFS.</div>
     </div>
 
     <div class="pane" data-pane="enh" hidden>
@@ -461,8 +488,8 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
       <ul class="steps" id="steps">
         <li data-s="read"><span class="st"></span>Reading your video</li>
         <li data-s="decode"><span class="st"></span>Pulling out the audio</li>
-        <li data-s="scan"><span class="st"></span>Scanning speech, 100 frames per second</li>
-        <li data-s="ai"><span class="st"></span>Isolating your voice with AI</li>
+        <li data-s="scan"><span class="st"></span>Isolating your voice with AI</li>
+        <li data-s="ai"><span class="st"></span>Reading every word, 100 times a second</li>
         <li data-s="detect"><span class="st"></span>Finding pauses and “umm”s</li>
         <li data-s="voice"><span class="st"></span>Mastering your voice</li>
       </ul>
@@ -524,7 +551,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
 <!-- guide -->
 <div class="ov" id="ovG" hidden>
   <div class="card" role="dialog" aria-labelledby="gT">
-    <div class="ch"><svg width="26" height="26"><use href="#emblem"/></svg><h3 id="gT">How PRO CUT works <span class="tag" style="margin-left:6px;vertical-align:2px">v6.2</span></h3><button class="iconbtn" id="bCloseG" aria-label="Close guide"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="ch"><svg width="26" height="26"><use href="#emblem"/></svg><h3 id="gT">How PRO CUT works <span class="tag" style="margin-left:6px;vertical-align:2px">v7.0</span></h3><button class="iconbtn" id="bCloseG" aria-label="Close guide"><svg class="ico"><use href="#i-x"/></svg></button></div>
     <div class="cb">
       <div class="g-steps">
         <div class="g-step"><span class="n">1</span><div><h4>Tap New video</h4><p>The PRO CUT intro is preloaded. Tap <b>New video</b> and pick a clip from your gallery. Pro camera files get a one-tap editable copy.</p></div></div>
@@ -535,7 +562,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
       <div class="g-sec"><h4>What it does</h4>
         <ul>
           <li><b>Pauses:</b> measures loudness 100 times a second, learns your room’s quiet level, and cuts any silence longer than your setting.</li>
-          <li><b>Umm / uhh:</b> finds held, steady-pitch vowel sounds, both alone and stuck to words, that normal speech never holds. It listens to sound, not words, so check the purple marks.</li>
+          <li><b>Umm / uhh / ugh:</b> reads the shape of your mouth from the sound (vowel formants) 100 times a second and finds the neutral “uh” vowel and the closed-mouth “mm” hum held longer than real words ever hold them, alone or stuck to a word. Check the purple marks and tap any to keep it.</li>
           <li><b>Voice:</b> an open-source AI model (RNNoise) separates your voice from cars, wind and room noise, the background is muted between words, then a studio chain adds presence, air and harmonic sparkle and masters it loud for social (about −14 LUFS).</li>
           <li><b>Enhance:</b> sharpens edges, smooths grain, lifts color and can upscale to 1080p, 1440p or 4K.</li>
           <li><b>Export:</b> decodes every original frame and re-encodes it as H.264 MP4 at a high bitrate, so the cut is frame-accurate and holds up after uploading.</li>
@@ -582,11 +609,11 @@ function toast(msg,ms=3200){const t=$('#toast');t.textContent=msg;t.hidden=false
 const PACE={relaxed:{minPause:.85,pad:.24},natural:{minPause:.5,pad:.15},tight:{minPause:.3,pad:.08}};
 const LOOKS={off:{sharp:0,dn:0,vib:0,pop:0},subtle:{sharp:35,dn:20,vib:15,pop:15},crisp:{sharp:65,dn:35,vib:30,pop:30},max:{sharp:95,dn:50,vib:45,pop:45}};
 const QUAL={high:{base:16e6,help:'Clean and sharp with smaller files. Good for quick posts.'},ultra:{base:35e6,help:'Very high bitrate. Stays crisp after Instagram, TikTok and YouTube re-compress it.'},master:{base:70e6,help:'Near-lossless. For editing again in CapCut, Final Cut or DaVinci. Large files.'}};
-const VOICE_HELP={off:'No tone shaping. Your original voice, leveled only if noise reduction is on.',natural:'Gentle cleanup. Removes mud and adds a touch of clarity.',krispy:'Bright, close and punchy. Extra presence and air with firm leveling.',broadcast:'Warm and full like a radio host. Deeper low end, heavy leveling.'};
+const VOICE_HELP={off:'No tone shaping. Your voice is only cleaned and leveled to a steady volume.',natural:'Transparent studio polish: clears mud, adds a little clarity, gentle leveling.',krispy:'Close-mic creator sound: crisp air, forward clarity, smooth de-essing and confident leveling.',broadcast:'Warm radio-host voice: fuller low end, rich analog warmth and tight, consistent level.'};
 const S={file:null,url:null,dur:0,sr:48000,orig:null,mono:null,F:null,cuts:[],keeps:[],skipR:[],enh:null,ab:'enh',skip:true,undo:[],exporting:false,voiceDirty:false,
   mp4:null,vinfo:null,pro:false,noPreview:false,needsFF:false,proxy:'none',proxyURL:null,ffMounted:false,
   set:{pace:'natural',minPause:.5,pad:.15,level:0,fillers:true,fillerSens:'med',voice:'krispy',nr:'medium',quality:'ultra',
-       look:'off',sharp:0,dn:0,vib:0,pop:0,up:0,pv:true,eng:'auto'}};
+       look:'off',sharp:0,dn:0,vib:0,pop:0,up:0,pv:true,eng:'auto',nrAmt:65,voiceOnly:true,xf:50,tone:null}};
 const UA=navigator.userAgent,IS_WEBKIT=/iP(hone|ad|od)/.test(UA)||(/Macintosh/.test(UA)&&'ontouchend' in document)||(/AppleWebKit/.test(UA)&&/Safari/.test(UA)&&!/Chrome|Chromium|CriOS|Edg|OPR|Android/.test(UA));
 let actx=null;
 async function ensureCtx(){if(!actx){const C=window.AudioContext||window.webkitAudioContext;actx=new C({latencyHint:'interactive'})}if(actx.state==='suspended'){try{await actx.resume()}catch(e){}}return actx}
@@ -603,14 +630,21 @@ function hann(N){const w=new Float32Array(N);for(let i=0;i<N;i++)w[i]=.5-.5*Math
 function median(a){if(!a.length)return 0;const s=Float32Array.from(a).sort();return s[s.length>>1]}
 function pct(arr,p){const a=[];for(let i=0;i<arr.length;i++)if(arr[i]>-100)a.push(arr[i]);if(!a.length)return -100;const s=Float32Array.from(a).sort();return s[Math.min(s.length-1,Math.floor(p*s.length))]}
 
-/* frame analysis every 10 ms: loudness, speech-band loudness, peak, spectral flux, centroid, zero-crossings, pitch + periodicity */
-async function analyze(onP){
-  const x=S.mono,sr=S.sr,N=1024,hop=Math.max(1,Math.round(sr*.01));
-  const n=Math.max(1,Math.floor((x.length-N)/hop)+1);
-  const rms=new Float32Array(n),band=new Float32Array(n),peak=new Float32Array(n),flux=new Float32Array(n),cent=new Float32Array(n),zcr=new Float32Array(n),per=new Float32Array(n),f0=new Float32Array(n);
+/* frame analysis every 10 ms on the AI-cleaned voice: loudness, voice-band loudness, flux, centroid, zero-crossings, pitch, periodicity and vowel formants (F1/F2) */
+function lpcFormants(fr,ord,sr){const n=fr.length,r=new Float64Array(ord+1);for(let l=0;l<=ord;l++){let s=0;for(let i=l;i<n;i++)s+=fr[i]*fr[i-l];r[l]=s}
+  if(r[0]<=1e-9)return [0,0];r[0]*=1.0001;const a=new Float64Array(ord+1),tmp=new Float64Array(ord+1);a[0]=1;let e=r[0];
+  for(let i=1;i<=ord;i++){let acc=r[i];for(let j=1;j<i;j++)acc+=a[j]*r[i-j];const k=-acc/e;tmp.set(a);for(let j=1;j<i;j++)a[j]=tmp[j]+k*tmp[i-j];a[i]=k;e*=(1-k*k);if(e<=0)return [0,0]}
+  const pk=[];let p2=0,p1=0;for(let f=150;f<=3600;f+=25){const w=2*Math.PI*f/sr;let re=0,im=0;for(let j=0;j<=ord;j++){re+=a[j]*Math.cos(w*j);im-=a[j]*Math.sin(w*j)}const m=1/(re*re+im*im);
+    if(p1>p2&&p1>m&&f-25>=250)pk.push(f-25);p2=p1;p1=m}
+  return [pk[0]||0,pk[1]||0]}
+async function analyze(onP,x=S.mono,sr=S.sr){
+  const N=1024,hop=Math.max(1,Math.round(sr*.01)),n=Math.max(1,Math.floor((x.length-N)/hop)+1);
+  const rms=new Float32Array(n),band=new Float32Array(n),peak=new Float32Array(n),flux=new Float32Array(n),cent=new Float32Array(n),zcr=new Float32Array(n),per=new Float32Array(n),f0=new Float32Array(n),F1=new Float32Array(n),F2=new Float32Array(n);
   const fft=FFT(N),re=new Float32Array(N),im=new Float32Array(N),win=hann(N),prev=new Float32Array(N/2);
   const kLo=Math.ceil(80*N/sr),kHi=Math.min(N/2-1,Math.floor(8000*N/sr)),bLo=Math.ceil(300*N/sr),bHi=Math.min(N/2-1,Math.floor(3400*N/sr));
   const lagMin=Math.max(2,Math.floor(sr/420)),lagMax=Math.min(N/2-1,Math.ceil(sr/70)),pr=new Float32Array(N),pi=new Float32Array(N);
+  let x8=null;try{x8=await resampleTo(x,sr,8000)}catch(e){}
+  const L8=256,fr8=new Float64Array(L8),hm=new Float64Array(L8);for(let i=0;i<L8;i++)hm[i]=.54-.46*Math.cos(2*Math.PI*i/(L8-1));
   for(let i=0;i<n;i++){const o=i*hop;let ss=0,zc=0,pk=0,last=x[o]||0;
     for(let j=0;j<N;j++){const v=x[o+j]||0;ss+=v*v;re[j]=v*win[j];im[j]=0;if((v>=0)!==(last>=0))zc++;last=v}
     for(let j=0;j<hop;j++){const a=Math.abs(x[o+j]||0);if(a>pk)pk=a}
@@ -619,15 +653,15 @@ async function analyze(onP){
     for(let k=0;k<N;k++){pr[k]=re[k]*re[k]+im[k]*im[k];pi[k]=0}
     for(let k=kLo;k<=kHi;k++){const m=Math.sqrt(pr[k]);sm+=m;sw+=m*k;const d=m-prev[k];if(d>0)fl+=d;prev[k]=m;if(k>=bLo&&k<=bHi)be+=pr[k]}
     band[i]=10*Math.log10(be/(N*N)+1e-14);cent[i]=sm>0?sw/sm*sr/N:0;flux[i]=fl/(sm+1e-9);
-    // autocorrelation through the power spectrum -> pitch and how periodic (voiced) the frame is
     const kc=Math.ceil(1000*N/sr);for(let k=kc;k<=N-kc;k++)pr[k]=0;pr[0]=0;
     fft(pr,pi);const a0=pr[0]||1e-12;let best=0,bl=0;for(let l=lagMin;l<=lagMax;l++){const v=pr[l]/a0;if(v>best){best=v;bl=l}}
     per[i]=best;f0[i]=bl?sr/bl:0;
+    if(x8&&best>.22){const c=Math.round((o+N/2)/sr*8000)-L8/2;let pv=0;for(let j=0;j<L8;j++){const v=x8[c+j]||0;fr8[j]=(v-.94*pv)*hm[j];pv=v}const f=lpcFormants(fr8,10,8000);F1[i]=f[0];F2[i]=f[1]}
     if(i%1200===0){onP(i/n);await idle()}
   }
   const floor=pct(rms,.1),speech=pct(rms,.9),bfloor=pct(band,.1),bspeech=pct(band,.9);
   const fl=[],zz=[];for(let i=0;i<n;i+=2)if(band[i]>bspeech-12){fl.push(flux[i]);zz.push(zcr[i])}
-  S.F={rms,band,peak,flux,cent,zcr,per,f0,hop,N,n,dt:hop/sr,off:N/2/sr,floor,speech,bfloor,bspeech,fluxMed:median(fl)||1e-3,zcrMed:median(zz)||1e-3};
+  S.F={rms,band,peak,flux,cent,zcr,per,f0,F1,F2,hop,N,n,sr,dt:hop/sr,off:N/2/sr,floor,speech,bfloor,bspeech,fluxMed:median(fl)||1e-3,zcrMed:median(zz)||1e-3};
 }
 
 /* ---- AI voice isolation: RNNoise (open-source neural noise suppressor, BSD license) compiled to WebAssembly ---- */
@@ -644,25 +678,50 @@ async function isolateVoice(onP){
   let rn;try{rn=await Promise.race([getRnnoise(),sleep(20000).then(()=>{throw new Error('timeout')})])}catch(e){console.warn('rnnoise unavailable',e);return false}
   const x48=await resampleTo(S.mono,S.sr,48000),fs=rn.frameSize||480,n=Math.floor(x48.length/fs);
   const out=new Float32Array(x48.length),vad=new Float32Array(n),st=rn.createDenoiseState(),fr=new Float32Array(fs);
-  // two warm-up passes over the first second let the model settle on the room noise before the real pass
-  for(let w=0;w<Math.min(n,100);w++){for(let j=0;j<fs;j++)fr[j]=x48[w*fs+j]*32768;st.processFrame(fr)}
+  for(let w=0;w<Math.min(n,150);w++){for(let j=0;j<fs;j++)fr[j]=x48[w*fs+j]*32768;st.processFrame(fr)}
   for(let i=0;i<n;i++){const o=i*fs;for(let j=0;j<fs;j++)fr[j]=x48[o+j]*32768;vad[i]=st.processFrame(fr);for(let j=0;j<fs;j++)out[o+j]=fr[j]/32768;
     if(i%3000===0){onP(i/n);await idle()}}
-  st.destroy();S.clean=out;S.vad=vad;S.vadDt=fs/48000;S.engine='rnnoise';return true}
+  st.destroy();S.clean=out;S.x48=x48;S.vad=vad;S.vadDt=fs/48000;S.engine='rnnoise';return true}
 
-/* speech / not-speech per 10 ms frame. Uses the AI voice detector when available, otherwise speech-band loudness. */
+/* human voice / not voice per 10 ms frame. With the AI detector only real speech counts: traffic, music and room noise never do. */
 function speechMask(){const F=S.F,n=F.n,st=S.set,m=new Uint8Array(n);
   const bthr=F.bfloor+Math.max(4,(F.bspeech-F.bfloor)*.28)+st.level*.8;
-  if(S.vad){const vthr=clamp(.5+st.level*.04,.1,.92),V_=S.vad,r=S.vadDt/F.dt;
+  if(S.vad){const vthr=clamp((st.voiceOnly?.6:.5)+st.level*.035,.12,.94),V_=S.vad;
     for(let i=0;i<n;i++){const t=i*F.dt+F.off,k=Math.floor(t/S.vadDt);let v=0;for(let d=-2;d<=2;d++){const q=V_[clamp(k+d,0,V_.length-1)];if(q>v)v=q}
-      m[i]=(v>vthr&&F.band[i]>F.bfloor+3)||(F.band[i]>bthr+10)?1:0}}
-  else for(let i=0;i<n;i++)m[i]=F.band[i]>bthr?1:0;
-  // hysteresis: fill tiny holes inside words, drop tiny blips
+      m[i]=v>vthr&&F.band[i]>F.bfloor+3?1:0}}
+  else for(let i=0;i<n;i++)m[i]=F.band[i]>bthr&&F.per[i]>.18?1:0;
   const fill=(val,maxRun)=>{let s=-1;for(let i=0;i<=n;i++){if(i<n&&m[i]===val){if(s<0)s=i}else{if(s>=0&&i-s<=maxRun&&s>0&&i<n)for(let j=s;j<i;j++)m[j]=1-val;s=-1}}};
-  fill(0,6);fill(1,4);return m}
+  fill(0,7);fill(1,5);return m}
+
+/* filler finder: "uh", "um", "uhh", "umm", "ugh". It looks for the neutral vowel shape (F1 ~350-900 Hz, F2 ~850-1900 Hz)
+   or the closed-mouth "m" hum, held steady with flat pitch for longer than real words ever hold a vowel. */
+function findFillers(v,sens){const F=S.F,{flux,cent,per,f0,F1,F2,n,dt}=F,out=[];
+  const sf=new Float32Array(n);for(let i=0;i<n;i++){let a=0,c=0;for(let d=-2;d<=2;d++){const j=i+d;if(j>=0&&j<n){a+=flux[j];c++}}sf[i]=a/c}
+  const schwa=i=>F1[i]>=330&&F1[i]<=900&&F2[i]>=800&&F2[i]<=1950;
+  const nasal=i=>per[i]>.3&&(F1[i]===0||F1[i]<430)&&cent[i]<1300;
+  const shape=i=>v[i]&&per[i]>.24&&(schwa(i)||nasal(i)),steady=i=>sf[i]<F.fluxMed*sens.flux;
+  const T=i=>clamp(i*dt+F.off,0,S.dur),minRun=Math.round(sens.hold/dt);
+  const judge=(a,b)=>{let sc=0,nc=0,f1=[],p=[],ce=0;for(let j=a;j<b;j++){if(schwa(j)){sc++;f1.push(F1[j]);if(f0[j]>60&&f0[j]<420)p.push(f0[j])}else if(nasal(j))nc++;ce+=cent[j]}
+    const c=b-a;if(sc<c*.25||sc+nc<c*.72||!f1.length)return false;const m1=f1.reduce((x,y)=>x+y,0)/f1.length,sd1=Math.sqrt(f1.reduce((x,y)=>x+(y-m1)*(y-m1),0)/f1.length)/m1;
+    if(sd1>sens.f1cv||sc*dt<.12)return false;if(p.length>4){p.sort((x,y)=>x-y);const med=p[p.length>>1],q=p.map(f=>{let r=f/med;while(r>1.45)r/=2;while(r<.7)r*=2;return r}).sort((x,y)=>x-y);const spread=q[Math.floor(q.length*.85)]-q[Math.floor(q.length*.15)];if(spread>sens.pitch)return false}
+    return ce/c<2100};
+  // held runs: steady vowel/hum frames; the "uh"->"m" transition may wobble briefly, other sounds may interrupt only for a blink
+  let a=-1,soft=0,hard=0,last=-1;
+  for(let i=0;i<=n;i++){const sh=i<n&&shape(i),st=sh&&steady(i);
+    if(st){if(a<0)a=i;soft=0;hard=0;last=i}
+    else if(a>=0&&sh&&soft<7){soft++}
+    else if(a>=0&&i<n&&v[i]&&hard<2){hard++}
+    else{if(a>=0){const b=last+1;if(b-a>=minRun&&judge(a,b))out.push({s:Math.max(0,T(a)-.03),e:Math.min(S.dur,T(b)+.05),k:'filler',on:true})}a=-1;soft=0;hard=0;if(st){a=i;last=i}}}
+  // short isolated blips between pauses ("uh." "um.") that are almost all neutral vowel or hum
+  let s=-1;for(let i=0;i<=n;i++){if(i<n&&v[i]){if(s<0)s=i}else if(s>=0){const d=(i-s)*dt;
+      if(d>=.12&&d<=.9){let c=0;for(let j=s;j<i;j++)if(shape(j))c++;
+        if(c>=(i-s)*.75&&judge(s,i)){const s0=T(s)-.03,e0=T(i)+.04;if(!out.some(x=>x.s<e0&&x.e>s0))out.push({s:Math.max(0,s0),e:Math.min(S.dur,e0),k:'filler',on:true})}}s=-1}}
+  // merge overlaps
+  out.sort((x,y)=>x.s-y.s);const m=[];for(const c of out){const l=m[m.length-1];if(l&&c.s<=l.e)l.e=Math.max(l.e,c.e);else m.push(c)}
+  return m}
 
 function detect(){
-  const F=S.F;if(!F)return;const {flux,cent,zcr,per,f0,n,dt,off}=F,st=S.set;
+  const F=S.F;if(!F)return;const {n,dt,off}=F,st=S.set;
   if(S.intro){S.cuts=[];S.undo=[];computeKeeps();return}
   const v=speechMask();S.mask=v;
   const T=i=>clamp(i*dt+off,0,S.dur);
@@ -670,26 +729,11 @@ function detect(){
   const cuts=[];
   for(const r of sil){const s0=r.a===0?0:T(r.a),e0=r.b>=n?S.dur:T(r.b);if(e0-s0<st.minPause&&!(r.a===0||r.b>=n))continue;
     const s1=r.a===0?0:s0+st.pad,e1=r.b>=n?S.dur:e0-st.pad;if(e1-s1>=.08)cuts.push({s:s1,e:e1,k:'pause',on:true})}
-  if(st.fillers){
-    const sens={low:{flux:.65,cv:.14,hold:.36},med:{flux:.88,cv:.2,hold:.28},high:{flux:1.02,cv:.25,hold:.22}}[st.fillerSens];
-    const sf=new Float32Array(n);for(let i=0;i<n;i++){let a=0,c=0;for(let d=-2;d<=2;d++){const j=i+d;if(j>=0&&j<n){a+=flux[j];c++}}sf[i]=a/c}
-    const steady=i=>v[i]&&per[i]>.28&&sf[i]<F.fluxMed*sens.flux&&cent[i]<2300;
-    const runStats=(a,b)=>{let cm=0,cs=0,pp=0;for(let j=a;j<b;j++){cm+=cent[j];cs+=cent[j]*cent[j];pp+=per[j]}const c=b-a;cm/=c;return {cv:Math.sqrt(Math.max(0,cs/c-cm*cm))/(cm+1e-9),per:pp/c}};
-    // 1) short, flat blips standing alone between pauses ("uh." "um.")
-    const big=sil.filter(r=>(r.b-r.a)*dt>=.12||r.a===0||r.b>=n);const voiced=[];let p=0;
-    for(const r of big){if(r.a>p)voiced.push({a:p,b:r.a});p=r.b}if(p<n)voiced.push({a:p,b:n});
-    for(const r of voiced){const d=(r.b-r.a)*dt;if(d<.15||d>1.3)continue;let c=0,ok=0;for(let i=r.a;i<r.b;i++){if(!v[i])continue;c++;if(steady(i))ok++}
-      if(c>=8&&ok/c>.7){const rs=runStats(r.a,r.b);if(rs.cv<sens.cv*1.3&&rs.per>.3)cuts.push({s:Math.max(0,T(r.a)-.03),e:Math.min(S.dur,T(r.b)+.03),k:'filler',on:true})}}
-    // 2) drawn-out "uhhh / ummm" inside speech: a held, steady vowel longer than normal words ever hold
-    const minRun=Math.round(sens.hold/dt);let a=-1,miss=0;
-    for(let i=0;i<=n;i++){const ok=i<n&&steady(i);
-      if(ok){if(a<0)a=i;miss=0}else if(a>=0&&i<n&&miss<2&&v[i]){miss++}
-      else{if(a>=0){const b=i-miss;if(b-a>=minRun){const rs=runStats(a,b);if(rs.cv<sens.cv&&rs.per>.33){const s0=T(a)-.02,e0=T(b)+.04;
-            if(!cuts.some(c=>c.k==='filler'&&c.s<e0&&c.e>s0))cuts.push({s:Math.max(0,s0),e:Math.min(S.dur,e0),k:'filler',on:true})}}}
-        a=-1;miss=0}}
-  }
+  if(st.fillers){const sens={low:{flux:.75,hold:.4,f1cv:.09,pitch:.12},med:{flux:.95,hold:.3,f1cv:.13,pitch:.18},high:{flux:1.15,hold:.22,f1cv:.18,pitch:.26}}[st.fillerSens];
+    for(const c of findFillers(v,sens))cuts.push(c)}
   cuts.sort((x,y)=>x.s-y.s);S.cuts=cuts;S.undo=[];computeKeeps();
 }
+
 function frameRate(){const f=S.vinfo&&S.vinfo.fps;if(!f)return 0;const std=[23.976,24,25,29.97,30,48,50,59.94,60,100,119.88,120];
   const n=std.reduce((a,b)=>Math.abs(b-f)<Math.abs(a-f)?b:a);return Math.abs(n-f)/f<.01?(n%1?{23.976:24000/1001,29.97:30000/1001,59.94:60000/1001,119.88:120000/1001}[n]:n):f}
 function computeKeeps(){
@@ -701,12 +745,42 @@ function computeKeeps(){
   S.keeps=k;S.skipR=sk;updateStats();drawTL();
 }
 
-/* spectral noise reduction (fallback when the AI isolator can't load): adaptive noise print that follows changing noise like passing cars */
+/* ================= studio voice chain (pure JS so it sounds identical on every device) ================= */
+function biquad(type,f,sr,q=.707,gDb=0){const A=Math.pow(10,gDb/40),w=2*Math.PI*f/sr,cw=Math.cos(w),sw=Math.sin(w),al=sw/(2*q);let b0,b1,b2,a0,a1,a2;
+  if(type==='hp'){b0=(1+cw)/2;b1=-(1+cw);b2=(1+cw)/2;a0=1+al;a1=-2*cw;a2=1-al}
+  else if(type==='lp'){b0=(1-cw)/2;b1=1-cw;b2=(1-cw)/2;a0=1+al;a1=-2*cw;a2=1-al}
+  else if(type==='bp'){b0=al;b1=0;b2=-al;a0=1+al;a1=-2*cw;a2=1-al}
+  else if(type==='peak'){b0=1+al*A;b1=-2*cw;b2=1-al*A;a0=1+al/A;a1=-2*cw;a2=1-al/A}
+  else{const sa=2*Math.sqrt(A)*al;if(type==='ls'){b0=A*((A+1)-(A-1)*cw+sa);b1=2*A*((A-1)-(A+1)*cw);b2=A*((A+1)-(A-1)*cw-sa);a0=(A+1)+(A-1)*cw+sa;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-sa}
+    else{b0=A*((A+1)+(A-1)*cw+sa);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-sa);a0=(A+1)-(A-1)*cw+sa;a1=2*((A-1)-(A+1)*cw);a2=(A+1)-(A-1)*cw-sa}}
+  const c=[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0];let x1=0,x2=0,y1=0,y2=0;
+  return y=>{for(let i=0;i<y.length;i++){const x=y[i],o=c[0]*x+c[1]*x1+c[2]*x2-c[3]*y1-c[4]*y2;x2=x1;x1=x;y2=y1;y1=o;y[i]=o}return y}}
+function speechLevel(y,sr){const blk=Math.round(sr*.05),lv=[];for(let i=0;i+blk<=y.length;i+=blk){let s=0;for(let j=0;j<blk;j+=2)s+=y[i+j]*y[i+j];const db=10*Math.log10(s/(blk/2)+1e-12);if(db>-50)lv.push(db)}
+  lv.sort((a,b)=>a-b);return lv.length?lv[Math.floor(lv.length*.7)]:-30}
+/* RMS compressor with soft knee; threshold in dB, makeup applied separately */
+function compress(y,sr,thr,ratio,attMs,relMs,knee=6,rmsMs=10){const ae=Math.exp(-1/(sr*attMs/1000)),re_=Math.exp(-1/(sr*relMs/1000)),rc=Math.exp(-1/(sr*rmsMs/1000));let ms=0,gr=0;
+  for(let i=0;i<y.length;i++){ms=rc*ms+(1-rc)*y[i]*y[i];const lv=10*Math.log10(ms+1e-12),ov=lv-thr;let t=0;
+    if(ov>knee/2)t=ov*(1-1/ratio);else if(ov>-knee/2){const k=ov+knee/2;t=(1-1/ratio)*k*k/(2*knee)}
+    gr=t>gr?ae*gr+(1-ae)*t:re_*gr+(1-re_)*t;y[i]*=Math.pow(10,-gr/20)}return y}
+/* dynamic de-esser: only turns down 5-10 kHz when an "s" or "sh" spikes */
+function deEss(y,sr,amt){if(amt<=0)return y;const hp=biquad('hp',4800,sr,.7),hiP=Float32Array.from(y);hp(hiP);const det=Float32Array.from(y);biquad('bp',7000,sr,1.2)(det);
+  const a=Math.exp(-1/(sr*.001)),r=Math.exp(-1/(sr*.06)),rb=Math.exp(-1/(sr*.02));let e=0,eb=0;const maxCut=amt*12;
+  for(let i=0;i<y.length;i++){const d=Math.abs(det[i]),b=Math.abs(y[i]);e=d>e?a*e+(1-a)*d:r*e+(1-r)*d;eb=rb*eb+(1-rb)*b;
+    const ratio=e/(eb+1e-6),cut=clamp((ratio-.35)*40,0,maxCut),g=Math.pow(10,-cut/20);y[i]=y[i]-hiP[i]+hiP[i]*g}return y}
+/* gentle tube-style warmth: mostly even harmonics, blended in parallel */
+function warmth(y,amt){if(amt<=0)return y;const k=amt*.25;for(let i=0;i<y.length;i++){const x=y[i];y[i]=x+k*(Math.tanh(2.2*x)/2.2-x)+k*.15*x*Math.abs(x)}return y}
+function limiter(y,sr,ceil){const L=Math.max(1,Math.round(sr*.005)),n=y.length,req=new Float32Array(n);
+  for(let i=0;i<n;i++){const a=Math.abs(y[i]);req[i]=a>ceil?ceil/a:1}
+  const q=new Int32Array(n);let h=0,t=0;const gmin=new Float32Array(n);
+  for(let i=n-1;i>=0;i--){while(t>h&&req[q[t-1]]>=req[i])t--;q[t++]=i;while(q[h]>i+L)h++;gmin[i]=req[q[h]]}
+  const rel=1-Math.exp(-1/(sr*.08));let g=1,ga=1;const att=1-Math.exp(-1/(sr*.0015));
+  for(let i=0;i<n;i++){const tg=gmin[i];g=tg<g?g+(tg-g)*att:g+(tg-g)*rel;if(g>tg)g=Math.min(g,tg+.02);ga=Math.min(g,tg);y[i]*=ga;if(y[i]>ceil)y[i]=ceil;else if(y[i]<-ceil)y[i]=-ceil}}
+
+/* spectral noise remover (backup and residual cleanup): adaptive noise print that follows passing cars and hum */
 async function denoise(x,sr,alpha,redDb,onP){
   const N=2048,H=512,K=N/2+1,fft=FFT(N),w=new Float32Array(N);for(let i=0;i<N;i++)w[i]=Math.sqrt(.5-.5*Math.cos(2*Math.PI*i/N));
   const L=x.length,pad=new Float32Array(L+2*N);pad.set(x,N);const out=new Float32Array(pad.length);
-  const frames=Math.floor((pad.length-N)/H)+1,re=new Float32Array(N),im=new Float32Array(N),mag=new Float32Array(K);
-  // initial noise print from the quietest 10% of frames
+  const frames=Math.floor((pad.length-N)/H)+1,re=new Float32Array(N),im=new Float32Array(N);
   const en=new Float32Array(frames);for(let f=0;f<frames;f++){let s=0;const o=f*H;for(let j=0;j<N;j+=4){const v=pad[o+j];s+=v*v}en[f]=s}
   const srt=Float32Array.from(en).filter(v=>v>1e-12).sort(),cut=srt.length?srt[Math.floor(srt.length*.1)]:0;
   const noise=new Float32Array(K);let cnt=0;
@@ -714,9 +788,7 @@ async function denoise(x,sr,alpha,redDb,onP){
   if(cnt)for(let k=0;k<K;k++)noise[k]/=cnt;
   const floorG=Math.pow(10,-redDb/20),g=new Float32Array(K).fill(1),gs=new Float32Array(K),pmin=Float32Array.from(noise),psm=Float32Array.from(noise);
   for(let f=0;f<frames;f++){const o=f*H;for(let j=0;j<N;j++){re[j]=pad[o+j]*w[j];im[j]=0}fft(re,im);
-    for(let k=0;k<K;k++){const m=Math.hypot(re[k],im[k]);mag[k]=m;
-      // minimum-statistics tracking: the noise estimate creeps up slowly and drops fast, so it follows traffic and hum but not speech
-      psm[k]=.85*psm[k]+.15*m;pmin[k]=psm[k]<pmin[k]?psm[k]:pmin[k]*1.004+psm[k]*.0005;
+    for(let k=0;k<K;k++){const m=Math.hypot(re[k],im[k]);psm[k]=.85*psm[k]+.15*m;pmin[k]=psm[k]<pmin[k]?psm[k]:pmin[k]*1.004+psm[k]*.0005;
       const nk=Math.max(noise[k]*.5,pmin[k]*1.5),gr=Math.max(floorG,1-alpha*nk/(m+1e-9));g[k]=gr>g[k]?.4*g[k]+.6*gr:.7*g[k]+.3*gr}
     for(let k=0;k<K;k++)gs[k]=(g[Math.max(0,k-1)]+2*g[k]+g[Math.min(K-1,k+1)])/4;
     for(let k=0;k<K;k++){re[k]*=gs[k];im[k]*=gs[k]}for(let k=1;k<N/2;k++){re[N-k]=re[k];im[N-k]=-im[k]}
@@ -724,54 +796,59 @@ async function denoise(x,sr,alpha,redDb,onP){
     if(f%500===0){onP(f/frames);await idle()}}
   return out.slice(N,N+L)}
 
-/* gate between words: background drops away whenever nobody is talking */
+/* voice gate: everything that is not human voice fades away smoothly (no chattering) */
 function voiceGate(y,sr,floorDb){if(!S.F)return;const F=S.F,m=S.mask||speechMask(),fl=Math.pow(10,floorDb/20);
-  const hold=Math.round(.12/F.dt),open=new Uint8Array(F.n);for(let i=0;i<F.n;i++)if(m[i])for(let j=Math.max(0,i-3);j<=Math.min(F.n-1,i+hold);j++)open[j]=1;
-  const att=Math.exp(-1/(sr*.004)),rel=Math.exp(-1/(sr*.09));let g=1;
+  const hold=Math.round(.14/F.dt),pre=Math.round(.04/F.dt),open=new Uint8Array(F.n);for(let i=0;i<F.n;i++)if(m[i])for(let j=Math.max(0,i-pre);j<=Math.min(F.n-1,i+hold);j++)open[j]=1;
+  const att=Math.exp(-1/(sr*.006)),rel=Math.exp(-1/(sr*.12));let g=1;
   for(let i=0;i<y.length;i++){const fi=clamp(Math.floor((i/sr-F.off)/F.dt),0,F.n-1),tg=open[fi]?1:fl;g=tg>g?tg+(g-tg)*att:tg+(g-tg)*rel;y[i]*=g}}
 
-/* look-ahead brickwall limiter: no clipping, no pumping */
-function limiter(y,sr,ceil){const L=Math.max(1,Math.round(sr*.005)),n=y.length,req=new Float32Array(n);
-  for(let i=0;i<n;i++){const a=Math.abs(y[i]);req[i]=a>ceil?ceil/a:1}
-  const q=new Int32Array(n);let h=0,t=0;const gmin=new Float32Array(n);
-  for(let i=n-1;i>=0;i--){while(t>h&&req[q[t-1]]>=req[i])t--;q[t++]=i;while(q[h]>i+L)h++;gmin[i]=req[q[h]]}
-  const rel=1-Math.exp(-1/(sr*.08));let g=1;for(let i=0;i<n;i++){const tg=gmin[i];g=tg<g?tg:g+(tg-g)*rel;y[i]*=g;if(y[i]>ceil)y[i]=ceil;else if(y[i]<-ceil)y[i]=-ceil}}
-
+/* tone presets: every value is also a Fine-tune slider */
 const TONES={
-  natural:{hp:80,low:0,mud:-2.5,box:-1.5,pres:3,air:3,exc:.08,thr:-24,ratio:3,target:-16},
-  krispy:{hp:100,low:-1,mud:-4.5,box:-3,pres:6.5,air:7,exc:.22,thr:-28,ratio:4,target:-14},
-  broadcast:{hp:75,low:3.5,mud:-3.5,box:-2.5,pres:4.5,air:4,exc:.14,thr:-32,ratio:5,target:-14}};
+  off:{warm:0,mud:0,pres:0,air:0,deess:0,lev:0,sat:0,lufs:-16},
+  natural:{warm:1,mud:-2,pres:2,air:2,deess:30,lev:35,sat:10,lufs:-16},
+  krispy:{warm:1.5,mud:-3.5,pres:4,air:4.5,deess:55,lev:60,sat:25,lufs:-14},
+  broadcast:{warm:3.5,mud:-3,pres:3,air:2.5,deess:50,lev:80,sat:35,lufs:-14}};
+const NRMAP={off:0,light:35,medium:65,strong:90};
 async function processVoice(onP){
-  const st=S.set;if(st.voice==='off'&&st.nr==='off'){S.enh=null;onP(1);return}
-  let x,sr;
-  if(st.nr!=='off'&&S.clean){x=Float32Array.from(S.clean);sr=48000;onP(.1);
-    if(st.nr==='strong'){x=await denoise(x,sr,1.1,14,p=>onP(.1+p*.5))}}
-  else{x=S.mono;sr=S.sr;if(st.nr!=='off'){const [a,r]={light:[1.5,12],medium:[2.1,20],strong:[2.9,30]}[st.nr];x=await denoise(x,sr,a,r,p=>onP(p*.6))}}
-  if(x===S.mono)x=Float32Array.from(x);
-  if(st.nr!=='off')voiceGate(x,sr,{light:-12,medium:-24,strong:-42}[st.nr]);
-  const P=TONES[st.voice];let y=x;
-  if(P){onP(.7);await idle();
-    const C=window.OfflineAudioContext||window.webkitOfflineAudioContext,oc=new C(1,x.length,sr),b=oc.createBuffer(1,x.length,sr);b.getChannelData(0).set(x);
-    const src=oc.createBufferSource();src.buffer=b;
-    const mk=(type,f,q,gn)=>{const n=oc.createBiquadFilter();n.type=type;n.frequency.value=f;n.Q.value=q;n.gain.value=gn;return n};
-    const hp1=mk('highpass',P.hp,.7,0),hp2=mk('highpass',P.hp,.7,0);
-    const eq=[hp1,hp2,mk('lowshelf',140,.7,P.low),mk('peaking',300,1.1,P.mud),mk('peaking',650,1.4,P.box),mk('peaking',4200,.8,P.pres),mk('highshelf',10500,.7,P.air)];
-    const pre=oc.createDynamicsCompressor();pre.threshold.value=P.thr;pre.knee.value=6;pre.ratio.value=P.ratio;pre.attack.value=.004;pre.release.value=.12;
-    let node=src;for(const f of eq){node.connect(f);node=f}node.connect(pre);
-    // harmonic exciter on the top end: adds "crisp" sheen without raising hiss
-    const xh=mk('highpass',3000,.7,0),sh=oc.createWaveShaper(),cv=new Float32Array(1024);for(let i=0;i<1024;i++){const t=i/511.5-1;cv[i]=Math.tanh(3*t)/Math.tanh(3)}sh.curve=cv;
-    const xh2=mk('highpass',3500,.7,0),xg=oc.createGain();xg.gain.value=P.exc;
-    const mix=oc.createGain();pre.connect(mix);pre.connect(xh);xh.connect(sh);sh.connect(xh2);xh2.connect(xg);xg.connect(mix);
-    // de-esser-ish tame of harsh 7 kHz after the sheen
-    const ds=mk('peaking',7200,3,-2);mix.connect(ds);ds.connect(oc.destination);src.start();
-    const r=await oc.startRendering();y=new Float32Array(r.getChannelData(0));}
-  onP(.92);await idle();
-  // loudness: match speech level to a social-media target (about -14 LUFS), then brickwall at -1 dBFS
-  const blk=Math.round(sr*.05),lv=[];for(let i=0;i+blk<=y.length;i+=blk){let s=0;for(let j=0;j<blk;j++)s+=y[i+j]*y[i+j];const db=10*Math.log10(s/blk+1e-12);if(db>-45)lv.push(db)}
-  lv.sort((a,b)=>a-b);const cur=lv.length?lv[Math.floor(lv.length*.7)]:-30,tgt=P?P.target:-16,gain=clamp(Math.pow(10,(tgt-cur)/20),.1,20);
-  for(let i=0;i<y.length;i++)y[i]*=gain;limiter(y,sr,.89);
-  const out=makeBuf(y.length,sr,1);out.getChannelData(0).set(y);S.enh=out;onP(1);
+  const st=S.set;if(st.voice==='off'&&st.nrAmt<=0&&!st.voiceOnly){S.enh=null;onP(1);return}
+  const a=st.nrAmt;let x,sr;
+  if(a>0&&S.clean){sr=48000;const wet=Math.min(1,a/40),src=S.x48||S.clean;x=new Float32Array(S.clean.length);for(let i=0;i<x.length;i++)x[i]=S.clean[i]*wet+src[i]*(1-wet);onP(.1);
+    if(a>60)x=await denoise(x,sr,.5+(a-60)/40*1.2,8+(a-60)*.3,p=>onP(.1+p*.4))}
+  else{x=Float32Array.from(S.mono);sr=S.sr;if(a>0)x=await denoise(x,sr,1+a/40,8+a*.27,p=>onP(p*.5))}
+  if(a>0||st.voiceOnly)voiceGate(x,sr,st.voiceOnly?-70:-(8+a*.45));
+  onP(.6);await idle();
+  const T=st.tone;
+  // 1) clean low end and mud, 2) tonal balance, 3) de-ess, 4) two-stage leveling, 5) warmth, 6) loudness + true-peak limit
+  biquad('hp',80,sr,.707)(x);biquad('hp',80,sr,.707)(x);
+  if(T.warm)biquad('ls',170,sr,.7,T.warm)(x);
+  if(T.mud)biquad('peak',320,sr,1,T.mud)(x);
+  if(T.mud)biquad('peak',700,sr,1.4,T.mud*.45)(x);
+  if(T.pres)biquad('peak',3300,sr,.6,T.pres)(x);
+  if(T.air)biquad('hs',11000,sr,.6,T.air)(x);
+  onP(.7);await idle();
+  deEss(x,sr,T.deess/100);
+  if(T.lev>0){const lv=speechLevel(x,sr),k=T.lev/100;
+    compress(x,sr,lv-4-6*k,1.6+1.6*k,18,220,8,30);
+    compress(x,sr,lv+2-4*k,3+3*k,2.5,70,4,4)}
+  onP(.85);await idle();
+  warmth(x,T.sat/100);
+  const cur=speechLevel(x,sr),gain=clamp(Math.pow(10,(T.lufs-.8-cur)/20),.05,30);for(let i=0;i<x.length;i++)x[i]*=gain;
+  limiter(x,sr,Math.pow(10,-1.2/20));
+  const out=makeBuf(x.length,sr,1);out.getChannelData(0).set(x);S.enh=out;onP(1);
 }
+
+/* final audio: kept parts joined with editor-style centered equal-power crossfades (length unchanged, so video stays in sync) */
+function cutAudio(){const b=S.enh||S.orig,sr=b.sampleRate,src=b.getChannelData(0),K=S.keeps,H=Math.round(sr*S.set.xf/2000),edge=Math.round(sr*.006);
+  const seg=K.map(k=>[Math.round(k.s*sr),Math.min(b.length,Math.round(k.e*sr))]),len=seg.reduce((a,[s,e])=>a+Math.max(0,e-s),0),out=new Float32Array(len);
+  const at=i=>i>=0&&i<src.length?src[i]:0;let o=0;
+  for(let j=0;j<seg.length;j++){const [s,e]=seg[j],L=e-s;if(L<=0)continue;
+    const hin=j>0?Math.min(H,L>>1,(seg[j-1][1]-seg[j-1][0])>>1):0,hout=j<seg.length-1?Math.min(H,L>>1,(seg[j+1][1]-seg[j+1][0])>>1):0;
+    for(let i=0;i<L;i++){let g=1;if(j===0&&i<edge)g=i/edge;if(j===seg.length-1&&L-1-i<edge)g=Math.min(g,(L-1-i)/edge);
+      if(i<hin)continue;if(i>=L-hout)continue;out[o+i]+=src[s+i]*g}
+    if(hin>0){for(let m=0;m<2*hin;m++){const p=o-hin+m;if(p<0||p>=len)continue;out[p]+=at(s-hin+m)*Math.sin(Math.PI/2*(m+.5)/(2*hin))}}
+    if(hout>0){for(let m=0;m<2*hout;m++){const p=o+L-hout+m;if(p<0||p>=len)continue;out[p]+=at(e-hout+m)*Math.cos(Math.PI/2*(m+.5)/(2*hout))}}
+    o+=L}
+  return {data:out,sr}}
 
 /* ================= MP4 / MOV reading (streamed, low memory) ================= */
 async function bytes(file,s,e){return new Uint8Array(await file.slice(s,e).arrayBuffer())}
@@ -1111,9 +1188,10 @@ async function loadFile(file,opt={}){
     S.dur=Math.min(S.orig.duration,vd||pd||S.orig.duration);
     stepSet('decode','done');stepSet('scan','act');
     S.intro=!!opt.intro;S.clean=null;S.vad=null;S.mask=null;
-    await analyze(p=>aProg(.18+p*.27,'Scanning speech'));if(!alive())return;
+    stepSet('scan','act');S.x48=null;
+    if(!S.intro){aProg(.2,'Loading AI voice isolation…');await isolateVoice(p=>aProg(.2+p*.22,'Isolating your voice with AI'));if(!alive())return}
     stepSet('scan','done');stepSet('ai','act');
-    if(!S.intro){aProg(.46,'Loading AI voice isolation…');await isolateVoice(p=>aProg(.46+p*.2,'Isolating your voice with AI'));if(!alive())return}
+    if(S.clean)await analyze(p=>aProg(.42+p*.25,'Reading every word'),S.clean,48000);else await analyze(p=>aProg(.42+p*.25,'Reading every word'));if(!alive())return;
     stepSet('ai','done');stepSet('detect','act');aProg(.67,'Finding pauses and fillers');await idle();
     detect();stepSet('detect','done');stepSet('voice','act');
     if(!S.intro)await processVoice(p=>aProg(.7+p*.28,'Mastering your voice'));else S.enh=null;if(!alive())return;
@@ -1160,9 +1238,9 @@ const V=$('#vid');V.muted=true;
 let PB={src:null,g:null,ac:0,pos:0};
 const curBuf=()=>S.ab==='enh'&&S.enh?S.enh:S.orig;
 function aStart(){if(!actx||!S.orig||S.exporting)return;aStop();const b=curBuf(),t=V.currentTime;if(t>=b.duration-.02)return;
-  const src=actx.createBufferSource();src.buffer=b;const g=actx.createGain(),n=actx.currentTime;g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(1,n+.012);
+  const src=actx.createBufferSource();src.buffer=b;const g=actx.createGain(),n=actx.currentTime,fx=clamp(S.set.xf/2000,.008,.06);g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(1,n+fx);
   src.connect(g).connect(actx.destination);src.start(n,t);PB={src,g,ac:n,pos:t}}
-function aStop(){if(!PB.src)return;const {src,g}=PB,n=actx.currentTime;try{g.gain.cancelScheduledValues(n);g.gain.setValueAtTime(g.gain.value,n);g.gain.linearRampToValueAtTime(0,n+.01);src.stop(n+.02)}catch(e){}PB.src=null}
+function aStop(){if(!PB.src)return;const {src,g}=PB,n=actx.currentTime;try{const fx=clamp(S.set.xf/2000,.008,.06);g.gain.cancelScheduledValues(n);g.gain.setValueAtTime(g.gain.value,n);g.gain.linearRampToValueAtTime(0,n+fx);src.stop(n+fx+.01)}catch(e){}PB.src=null}
 V.addEventListener('playing',aStart);V.addEventListener('pause',aStop);V.addEventListener('seeking',aStop);V.addEventListener('waiting',aStop);V.addEventListener('ended',aStop);
 V.addEventListener('seeked',()=>{if(!V.paused&&!S.exporting)aStart()});
 V.addEventListener('play',()=>setPlayIcon(true));V.addEventListener('pause',()=>setPlayIcon(false));
@@ -1318,7 +1396,8 @@ function segOn(key,v){$$(`.seg[data-set="${key}"] button`).forEach(b=>b.classLis
 $$('.seg').forEach(seg=>seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const key=seg.dataset.set,v=b.dataset.v;segOn(key,v);
   if(key==='pace'){S.set.pace=v;Object.assign(S.set,PACE[v]);syncRanges();reDetect()}
   else if(key==='fillerSens'){S.set.fillerSens=v;reDetect()}
-  else if(key==='voice'||key==='nr'){S.set[key]=v;if(key==='voice')$('#vHelp').textContent=VOICE_HELP[v];S.voiceDirty=true;refreshApply()}
+  else if(key==='voice'){S.set.voice=v;S.set.tone={...TONES[v]};syncVoiceUI();markVoice()}
+  else if(key==='nr'){S.set.nr=v;S.set.nrAmt=NRMAP[v];syncVoiceUI();markVoice()}
   else if(key==='look'){S.set.look=v;Object.assign(S.set,LOOKS[v]);syncRanges();if(v!=='off'&&S.noPreview)toast('Preview isn’t available for this format here, but Enhance will apply on export.')}
   else if(key==='up'){S.set.up=+v;updateOut()}
   else if(key==='quality'){S.set.quality=v;updateOut()}
@@ -1334,7 +1413,18 @@ $('#bApply').onclick=async()=>{if(!S.mono)return;const b=$('#bApply'),pr=$('#vPr
   catch(e){console.error(e);toast('Voice processing failed on this device.')}
   pr.hidden=true;pr.querySelector('i').style.width='0';refreshApply()};
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.pane').forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);syncRanges()});
-syncRanges();
+S.set.tone={...TONES.krispy};
+function syncVoiceUI(){const t=S.set.tone;$('#vHelp').textContent=VOICE_HELP[S.set.voice]||'Custom sound from your Fine-tune settings.';
+  $$('input[data-t]').forEach(r=>{const k=r.dataset.t;r.value=t[k];const o=r.closest('.field').querySelector('output'),u=r.dataset.u||'';o.textContent=(u==='dB'&&t[k]>0?'+':'')+t[k]+(u?' '+u:'')});
+  $('#tNr').value=S.set.nrAmt;$('#oNr').textContent=S.set.nrAmt?S.set.nrAmt+'%':'Off';
+  $('#swVO').classList.toggle('on',S.set.voiceOnly);$('#swVO').setAttribute('aria-checked',S.set.voiceOnly);
+  $('#rXf').value=S.set.xf;$('#oXf').textContent=S.set.xf?S.set.xf+' ms':'Hard cut';$$('input[type=range]').forEach(setRangeFill)}
+function markVoice(){S.voiceDirty=true;refreshApply()}
+$$('input[data-t]').forEach(r=>r.addEventListener('input',()=>{S.set.tone[r.dataset.t]=+r.value;S.set.voice='custom';segOn('voice',null);syncVoiceUI();markVoice()}));
+$('#tNr').addEventListener('input',e=>{S.set.nrAmt=+e.target.value;const m=Object.keys(NRMAP).find(k=>NRMAP[k]===S.set.nrAmt);S.set.nr=m||'custom';segOn('nr',m);syncVoiceUI();markVoice()});
+$('#swVO').onclick=()=>{S.set.voiceOnly=!S.set.voiceOnly;syncVoiceUI();markVoice();reDetect()};
+$('#rXf').addEventListener('input',e=>{S.set.xf=+e.target.value;syncVoiceUI()});
+syncRanges();syncVoiceUI();
 
 /* ================= export ================= */
 const MIMES=['video/mp4;codecs=avc1.640033,mp4a.40.2','video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
@@ -1345,11 +1435,6 @@ const baseName=()=>(S.file&&S.file.name||'video').replace(/\.[^.]+$/,'');
 function saveBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000)}
 function xProg(p,lbl){$('#xBar').style.width=(clamp(p,0,1)*100).toFixed(1)+'%';$('#xPct').textContent=Math.round(clamp(p,0,1)*100)+'%';if(lbl)$('#xLbl').textContent=lbl}
 
-/* final cut audio: kept parts joined with short fades */
-function cutAudio(){const b=S.enh||S.orig,sr=b.sampleRate,src=b.getChannelData(0),fade=Math.round(sr*.008);
-  const segs=S.keeps.map(k=>[Math.floor(k.s*sr),Math.min(b.length,Math.floor(k.e*sr))]);const len=segs.reduce((a,[s,e])=>a+Math.max(0,e-s),0);
-  const out=new Float32Array(len);let o=0;for(const [s,e] of segs){const L=e-s;for(let i=0;i<L;i++)out[o+i]=src[s+i]*Math.min(1,i/fade,(L-1-i)/fade);o+=Math.max(0,L)}
-  return {data:out,sr}}
 async function resample(data,sr,to){if(sr===to)return data;const C=window.OfflineAudioContext||window.webkitOfflineAudioContext;const oc=new C(1,Math.ceil(data.length*to/sr),to);
   const b=oc.createBuffer(1,data.length,sr);b.getChannelData(0).set(data);const s=oc.createBufferSource();s.buffer=b;s.connect(oc.destination);s.start();return (await oc.startRendering()).getChannelData(0)}
 
