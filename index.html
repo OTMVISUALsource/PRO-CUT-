@@ -104,7 +104,12 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .split span{position:absolute;bottom:10px;font:600 10px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;padding:5px 7px;border-radius:5px;background:rgba(0,0,0,.65);white-space:nowrap}
 .split .l{right:10px}.split .r{left:10px;color:var(--accent)}
 .fxhit{position:absolute;inset:0;z-index:2;cursor:ew-resize;touch-action:none}
-.nopv{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);font-size:13px;z-index:1}
+.nopv{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);font-size:13px;z-index:4;background:rgba(0,0,0,.72)}
+.pvbox{display:grid;gap:12px;justify-items:center;width:min(300px,100%)}
+.pvbox p{margin:0;color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
+.pvbox .bar-p{width:100%}
+.fixpv{background:none;border:0;padding:0;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px;justify-self:start}
+.fixpv:hover{color:var(--fg)}
 .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px}
 .tc{font:500 15px/1 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:.02em;padding:0 8px;min-width:0}
 .tc small{color:var(--dim);font-size:12px}
@@ -302,7 +307,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
         <canvas class="fx" id="fx" hidden></canvas>
         <div class="fxhit" id="fxhit" hidden></div>
         <div class="split" id="split" hidden><span class="l">Before</span><span class="r">Enhanced</span><b>⇆</b></div>
-        <div class="nopv" id="nopv" hidden>This browser can’t show a preview of this video’s format. Cutting, voice and export still work.</div>
+        <div class="nopv" id="nopv" hidden><div class="pvbox"><svg width="34" height="34"><use href="#emblem"/></svg><p id="pvMsg">Preparing preview…</p><div class="bar-p"><i id="pvBar"></i></div><button class="btn" id="pvBtn" hidden>Build preview</button></div></div>
         <div class="badge"><span class="pill on" id="pSkip">Cuts on</span><span class="pill" id="pAB">Enhanced</span></div>
       </div>
     </div>
@@ -321,6 +326,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="stat"><span>Time saved</span><b id="sS">0:00</b></div>
       <div class="stat"><span>Cuts</span><b id="sC">0</b></div>
     </div>
+    <button class="fixpv" id="fixpv">Picture black, frozen or stuttering? Build a compatible preview</button>
   </section>
 
   <section class="tlwrap">
@@ -400,9 +406,10 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="field"><div class="flabel"><label for="ePop">Pop</label><output id="oPop">0</output></div><input type="range" id="ePop" min="0" max="100" step="1" value="0"></div>
       <div class="divider"></div>
       <div class="field">
-        <div class="flabel">Upscale</div>
+        <div class="flabel">Output resolution</div>
         <div class="seg" data-set="up"><button data-v="0" class="on">Original</button><button data-v="1080">1080p</button><button data-v="1440">1440p</button><button data-v="2160">4K</button></div>
         <div class="res"><span id="rIn">—</span><span class="arrow">→</span><b id="rOut">—</b></div>
+        <div class="fhelp">Smaller videos get upscaled, 4K camera files can be brought down to 1080p (what Instagram shows) for faster exports and smaller files.</div>
       </div>
       <div class="row"><div><div class="flabel">Before / after on video</div><div class="fhelp" style="margin:2px 0 0">Drag the line across the picture</div></div><button class="sw on" id="swPv" role="switch" aria-checked="true" aria-label="Show before and after"></button></div>
       <div class="note">Upscaling rebuilds each frame at the new size with a sharp bicubic filter, then edge-aware sharpening restores fine detail. It’s applied when you export.</div>
@@ -421,6 +428,10 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
         <div class="flabel">Quality</div>
         <div class="seg" data-set="quality"><button data-v="high">High</button><button data-v="ultra" class="on">Ultra</button><button data-v="master">Master</button></div>
         <div class="fhelp" id="qHelp">Very high bitrate. Stays crisp after Instagram, TikTok and YouTube re-compress it.</div>
+      </div>
+      <div class="field" id="engF" hidden>
+        <div class="flabel">Engine</div>
+        <div class="seg" data-set="eng"><button data-v="auto" class="on">Real-time</button><button data-v="ff">Best quality</button></div>
       </div>
       <button class="btn primary wide" id="bExport"><svg class="ico"><use href="#i-export"/></svg>Export video</button>
       <button class="btn wide" id="bWav"><svg class="ico"><use href="#i-wave"/></svg>Export audio only (WAV)</button>
@@ -500,6 +511,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
           <li>Pauses missed in a noisy room? Raise <b>Silence level</b>.</li>
           <li>Noise reduction works best on hiss, fans and hum. It can’t fully remove music or other voices.</li>
           <li>Shortcuts: <span class="kbd">Space</span> play, <span class="kbd">S</span> skip cuts, <span class="kbd">A</span> before/after, <span class="kbd">,</span> <span class="kbd">.</span> jump between cuts.</li>
+          <li><b>Pro camera files</b> (Blackmagic Camera, 4K 10-bit 4:2:2 HEVC) open fastest in Safari on iPhone or Mac. Other browsers build a preview on your device first, which takes a few minutes.</li>
+          <li>Picture black or stuttering? Tap <b>Build a compatible preview</b> under the video.</li>
           <li>Best in Safari 17+, Chrome or Edge. Keep the tab open while exporting.</li>
         </ul>
       </div>
@@ -525,12 +538,13 @@ function toast(msg,ms=3200){const t=$('#toast');t.textContent=msg;t.hidden=false
 
 const PACE={relaxed:{minPause:.85,pad:.24},natural:{minPause:.5,pad:.15},tight:{minPause:.3,pad:.08}};
 const LOOKS={off:{sharp:0,dn:0,vib:0,pop:0},subtle:{sharp:35,dn:20,vib:15,pop:15},crisp:{sharp:65,dn:35,vib:30,pop:30},max:{sharp:95,dn:50,vib:45,pop:45}};
-const QUAL={high:{bpp:.25,help:'Clean and sharp with smaller files. Good for quick posts.'},ultra:{bpp:.6,help:'Very high bitrate. Stays crisp after Instagram, TikTok and YouTube re-compress it.'},master:{bpp:1.2,help:'Near-lossless. For editing again in CapCut, Final Cut or DaVinci. Large files.'}};
+const QUAL={high:{base:16e6,help:'Clean and sharp with smaller files. Good for quick posts.'},ultra:{base:35e6,help:'Very high bitrate. Stays crisp after Instagram, TikTok and YouTube re-compress it.'},master:{base:70e6,help:'Near-lossless. For editing again in CapCut, Final Cut or DaVinci. Large files.'}};
 const VOICE_HELP={off:'No tone shaping. Your original voice, leveled only if noise reduction is on.',natural:'Gentle cleanup. Removes mud and adds a touch of clarity.',krispy:'Bright, close and punchy. Extra presence and air with firm leveling.',broadcast:'Warm and full like a radio host. Deeper low end, heavy leveling.'};
 const S={file:null,url:null,dur:0,sr:48000,orig:null,mono:null,F:null,cuts:[],keeps:[],skipR:[],enh:null,ab:'enh',skip:true,undo:[],exporting:false,voiceDirty:false,
-  mp4:null,vinfo:null,pro:false,noPreview:false,
+  mp4:null,vinfo:null,pro:false,noPreview:false,needsFF:false,proxy:'none',proxyURL:null,ffMounted:false,
   set:{pace:'natural',minPause:.5,pad:.15,level:0,fillers:true,fillerSens:'med',voice:'krispy',nr:'medium',quality:'ultra',
-       look:'off',sharp:0,dn:0,vib:0,pop:0,up:0,pv:true}};
+       look:'off',sharp:0,dn:0,vib:0,pop:0,up:0,pv:true,eng:'auto'}};
+const UA=navigator.userAgent,IS_WEBKIT=/iP(hone|ad|od)/.test(UA)||(/Macintosh/.test(UA)&&'ontouchend' in document)||(/AppleWebKit/.test(UA)&&/Safari/.test(UA)&&!/Chrome|Chromium|CriOS|Edg|OPR|Android/.test(UA));
 let actx=null;
 async function ensureCtx(){if(!actx){const C=window.AudioContext||window.webkitAudioContext;actx=new C({latencyHint:'interactive'})}if(actx.state==='suspended'){try{await actx.resume()}catch(e){}}return actx}
 function makeBuf(len,sr,ch=1){try{return new AudioBuffer({length:len,numberOfChannels:ch,sampleRate:sr})}catch(e){return actx.createBuffer(ch,len,sr)}}
@@ -587,10 +601,13 @@ function detect(){
   }
   cuts.sort((a,b)=>a.s-b.s);S.cuts=cuts;S.undo=[];computeKeeps();
 }
+function frameRate(){const f=S.vinfo&&S.vinfo.fps;if(!f)return 0;const std=[23.976,24,25,29.97,30,48,50,59.94,60,100,119.88,120];
+  const n=std.reduce((a,b)=>Math.abs(b-f)<Math.abs(a-f)?b:a);return Math.abs(n-f)/f<.01?(n%1?{23.976:24000/1001,29.97:30000/1001,59.94:60000/1001,119.88:120000/1001}[n]:n):f}
 function computeKeeps(){
   const a=S.cuts.filter(c=>c.on).map(c=>({s:c.s,e:c.e})).sort((x,y)=>x.s-y.s),m=[];
   for(const c of a){const l=m[m.length-1];if(l&&c.s<=l.e+.06)l.e=Math.max(l.e,c.e);else m.push({...c})}
-  const k=[];let p=0;for(const c of m){if(c.s-p>.06)k.push({s:p,e:c.s});p=Math.max(p,c.e)}if(S.dur-p>.06)k.push({s:p,e:S.dur});
+  const fr=frameRate(),snap=t=>fr?Math.round(t*fr)/fr:t;
+  const k=[];let p=0;for(const c of m){const s=snap(p),e=snap(c.s);if(e-s>.06)k.push({s,e});p=Math.max(p,c.e)}if(S.dur-p>.06)k.push({s:snap(p),e:S.dur});
   const sk=[];p=0;for(const x of k){if(x.s-p>.001)sk.push({s:p,e:x.s});p=x.e}if(S.dur-p>.001)sk.push({s:p,e:S.dur});
   S.keeps=k;S.skipR=sk;updateStats();drawTL();
 }
@@ -699,6 +716,71 @@ async function decodeAudioStream(file,P,onP){
   await dec.flush();dec.close();if(err)throw err;if(!out)throw new Error('empty');
   return {data:out.subarray(0,Math.min(out.length,Math.ceil(durS*sr))),sr}}
 
+/* AAC without WebCodecs: wrap the raw AAC frames as small ADTS chunks and let the browser decode them.
+   Uses a few MB instead of loading the whole video into memory. */
+const SRI=[96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350];
+function aacCfg(asc,at){let ot=2,sri=SRI.indexOf(at.audio.sample_rate),ch=at.audio.channel_count||2;
+  if(asc&&asc.length>=2){ot=asc[0]>>3;sri=((asc[0]&7)<<1)|(asc[1]>>7);const c=(asc[1]>>3)&15;if(c)ch=c}
+  if(ot<1||ot>4)ot=2;if(sri<0||sri>12)sri=3;if(ch<1||ch>7)ch=2;return {ot,sri,ch}}
+function adtsHdr(len,c){const L=len+7,h=new Uint8Array(7);h[0]=0xFF;h[1]=0xF1;h[2]=((c.ot-1)<<6)|(c.sri<<2)|(c.ch>>2);h[3]=((c.ch&3)<<6)|(L>>11);h[4]=(L>>3)&0xFF;h[5]=((L&7)<<5)|0x1F;h[6]=0xFC;return h}
+async function decodeAudioADTS(file,P,onP){
+  const at=P.at;if(!at||!/^mp4a/.test(at.codec)||!P.as.length)throw new Error('not-aac');
+  const c=aacCfg(aDesc(P.atrak),at),smp=P.as,ts=smp[0].timescale,last=smp[smp.length-1],durS=(last.cts+last.duration)/ts;
+  const sr=actx.sampleRate,out=new Float32Array(Math.ceil(durS*sr)+sr);const CH=12000;
+  for(let a=0;a<smp.length;a+=CH){const b=Math.min(smp.length,a+CH);let size=0;for(let k=a;k<b;k++)size+=smp[k].size+7;
+    const buf=new Uint8Array(size);let o=0;
+    for(const [i,j,s0,e0] of groupReads(smp,a,b)){const raw=await bytes(file,s0,e0);for(let k=i;k<=j;k++){const s=smp[k];buf.set(adtsHdr(s.size,c),o);o+=7;buf.set(raw.subarray(s.offset-s0,s.offset-s0+s.size),o);o+=s.size}}
+    const ab=await new Promise((res,rej)=>{const p=actx.decodeAudioData(buf.buffer,res,rej);if(p&&p.then)p.then(res,rej)});
+    let expLen=0;for(let k=a;k<b;k++)expLen+=smp[k].duration;expLen=Math.round(expLen/ts*sr);
+    const skip=Math.max(0,Math.min(4096,ab.length-expLen)),pos=Math.round(smp[a].cts/ts*sr),n=ab.length-skip,chs=ab.numberOfChannels;
+    for(let ch=0;ch<chs;ch++){const d=ab.getChannelData(ch);for(let i=0;i<n&&pos+i<out.length;i++)out[pos+i]+=d[i+skip]/chs}
+    onP(b/smp.length);await idle()}
+  return {data:out.subarray(0,Math.ceil(durS*sr)),sr}}
+
+/* last resort for any codec: let the converter pull out the audio only (fast, no video decoding) */
+async function decodeAudioFF(onStatus){const ff=await getFF(onStatus),inp=await ffInput(ff);
+  onStatus('Extracting audio…');
+  const code=await ff.exec(['-i',inp,'-vn','-map','0:a:0','-ac','1','-ar','48000','-f','f32le','-c:a','pcm_f32le','-y','/aud.raw']);
+  if(code!==0)throw new Error('ff-audio');const u8=await ff.readFile('/aud.raw');try{await ff.deleteFile('/aud.raw')}catch(e){}
+  const al=u8.byteOffset%4?u8.slice():u8;return {data:new Float32Array(al.buffer,al.byteOffset,Math.floor(al.byteLength/4)),sr:48000}}
+
+/* ================= on-device converter (FFmpeg compiled to WebAssembly, loaded only when needed) ================= */
+const FFV='0.12.10',FCV='0.12.6',CDNS=['https://unpkg.com','https://cdn.jsdelivr.net/npm'];
+async function blobURL(path,type){let err;for(const c of CDNS){try{const r=await fetch(`${c}/${path}`);if(!r.ok)throw new Error('HTTP '+r.status);return URL.createObjectURL(new Blob([await r.arrayBuffer()],{type}))}catch(e){err=e}}throw err}
+let FFP=null;const FFH={onLog:null};
+function getFF(onStatus){
+  if(FFP)return FFP;
+  FFP=(async()=>{onStatus&&onStatus('Loading the pro decoder (one-time download, about 30 MB)…');
+    const mt=!!window.crossOriginIsolated,core=mt?`@ffmpeg/core-mt@${FCV}/dist/umd`:`@ffmpeg/core@${FCV}/dist/umd`;
+    const [js,wk,cj,cw,cwk]=await Promise.all([blobURL(`@ffmpeg/ffmpeg@${FFV}/dist/umd/ffmpeg.js`,'text/javascript'),blobURL(`@ffmpeg/ffmpeg@${FFV}/dist/umd/814.ffmpeg.js`,'text/javascript'),
+      blobURL(`${core}/ffmpeg-core.js`,'text/javascript'),blobURL(`${core}/ffmpeg-core.wasm`,'application/wasm'),mt?blobURL(`${core}/ffmpeg-core.worker.js`,'text/javascript'):Promise.resolve(null)]);
+    if(!window.FFmpegWASM)await new Promise((res,rej)=>{const s=document.createElement('script');s.src=js;s.onload=res;s.onerror=()=>rej(new Error('converter script'));document.head.appendChild(s)});
+    const ff=new FFmpegWASM.FFmpeg();ff.on('log',({message})=>{FFH.onLog&&FFH.onLog(message)});
+    const cfg={coreURL:cj,wasmURL:cw,classWorkerURL:wk};if(cwk)cfg.workerURL=cwk;await ff.load(cfg);return ff})();
+  FFP.catch(()=>{FFP=null});return FFP}
+async function ffInput(ff){if(S.ffMounted===S.file)return '/in/'+S.ffName;
+  if(S.ffMounted){try{await ff.unmount('/in')}catch(e){}}try{await ff.createDir('/in')}catch(e){}
+  let f=S.file;if(!f.name||/[\/\\]/.test(f.name))f=new File([f],'input.mov',{type:f.type});
+  await ff.mount('WORKERFS',{files:[f]},'/in');S.ffMounted=S.file;S.ffName=f.name;return '/in/'+f.name}
+const tParse=m=>{const r=/time=\s*(\d+):(\d+):([\d.]+)/.exec(m);return r?+r[1]*3600+ +r[2]*60+ +r[3]:null};
+const fParse=m=>{const r=/frame=\s*(\d+)/.exec(m);return r?+r[1]:null};
+
+/* smooth low-res preview copy for formats this browser can't play */
+async function buildProxy(){
+  if(S.proxy==='building'||S.proxy==='ready')return;S.proxy='building';const file=S.file;pvStatus('Preparing the pro decoder…',0);
+  try{const ff=await getFF(m=>pvStatus(m,0));if(S.file!==file)return;const inp=await ffInput(ff);const t0=performance.now();
+    FFH.onLog=m=>{const t=tParse(m);if(t!=null&&S.dur){const p=clamp(t/S.dur,0,1),el=(performance.now()-t0)/1000;pvStatus(`Building smooth preview · ${Math.round(p*100)}%${p>.03?' · '+fmt(el/p-el)+' left':''}`,p)}};
+    const code=await ff.exec(['-skip_loop_filter','all','-i',inp,'-map','0:v:0','-an','-vf','scale=540:540:force_original_aspect_ratio=increase:flags=fast_bilinear,scale=trunc(iw/2)*2:trunc(ih/2)*2',
+      '-c:v','libx264','-preset','ultrafast','-crf','26','-g','15','-pix_fmt','yuv420p','-movflags','+faststart','-y','/proxy.mp4']);
+    FFH.onLog=null;if(code!==0)throw new Error('proxy failed');if(S.file!==file)return;
+    const d=await ff.readFile('/proxy.mp4');try{await ff.deleteFile('/proxy.mp4')}catch(e){}
+    if(S.proxyURL)URL.revokeObjectURL(S.proxyURL);S.proxyURL=URL.createObjectURL(new Blob([d],{type:'video/mp4'}));
+    const t=V.currentTime;V.src=S.proxyURL;V.load();await once(V,'loadedmetadata',8000);try{V.currentTime=t}catch(e){}
+    S.proxy='ready';S.noPreview=false;pvStatus(null);sizeScreen();toast('Preview ready. Press play.')}
+  catch(e){console.error(e);S.proxy='failed';FFH.onLog=null;pvStatus('Couldn’t build a preview here. Cutting, voice and export still work. For instant playback, open this page in Safari.',-1)}}
+function pvStatus(msg,p){const el=$('#nopv');if(msg==null){el.hidden=true;return}el.hidden=false;$('#pvMsg').textContent=msg;
+  const bar=$('#pvBar');bar.parentElement.hidden=p<0;bar.style.width=(clamp(p||0,0,1)*100)+'%';$('#pvBtn').hidden=S.proxy==='building'||S.proxy==='ready'}
+
 async function decodeAudioWhole(file){const ab=await file.arrayBuffer();
   const buf=await new Promise((res,rej)=>{const p=actx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)});
   const mono=new Float32Array(buf.length),chs=buf.numberOfChannels;for(let c=0;c<chs;c++){const d=buf.getChannelData(c);for(let i=0;i<d.length;i++)mono[i]+=d[i]/chs}
@@ -771,19 +853,23 @@ async function loadFile(file){
   try{
     stepSet('read','act');
     if(S.url)URL.revokeObjectURL(S.url);
-    S.file=file;S.url=URL.createObjectURL(file);S.enh=null;S.mp4=null;S.vinfo=null;S.pro=false;S.noPreview=false;
+    S.file=file;S.url=URL.createObjectURL(file);S.enh=null;S.mp4=null;S.vinfo=null;S.pro=false;S.noPreview=false;S.needsFF=false;S.proxy='none';
+    if(S.proxyURL){URL.revokeObjectURL(S.proxyURL);S.proxyURL=null}
     V.src=S.url;V.load();
-    const metaP=once(V,'loadedmetadata error',12000);
+    const playP=canPlayNative();
     let P=null;try{P=await probeMp4(file)}catch(e){console.warn('probe',e)}
     S.mp4=P;if(P&&P.v)S.vinfo=P.v;
-    await metaP;
-    S.noPreview=!!V.error||!V.videoWidth;
+    const playable=await playP;
+    S.needsFF=!playable;S.noPreview=!playable;
     if(!S.vinfo&&V.videoWidth)S.vinfo={w:V.videoWidth,h:V.videoHeight,rot:0,fps:30,codec:''};
     stepSet('read','done');aProg(.06,'Pulling out the audio');stepSet('decode','act');await idle();
-    let A=null;
-    if(P&&P.at){try{A=await decodeAudioStream(file,P,p=>aProg(.06+p*.12))}catch(e){console.warn('stream audio',e)}}
-    if(!A){if(P&&!P.at)throw new Error('This video has no sound track. PRO CUT needs a voice to find the cuts.');
-      try{A=await decodeAudioWhole(file)}catch(e){throw new Error('Couldn’t read the audio in this video. Try Safari or Chrome, or export it from your gallery as “Most Compatible”.')}}
+    let A=null;const ap=p=>aProg(.06+p*.12);
+    if(P&&P.at&&window.AudioDecoder){try{A=await decodeAudioStream(file,P,ap)}catch(e){console.warn('webcodecs audio',e)}}
+    if(!A&&P&&P.at){try{A=await decodeAudioADTS(file,P,ap)}catch(e){console.warn('adts audio',e)}}
+    if(!A&&P&&!P.at)throw new Error('This video has no sound track. PRO CUT needs a voice to find the cuts.');
+    if(!A&&!P&&file.size<600e6){try{A=await decodeAudioWhole(file)}catch(e){console.warn('whole audio',e)}}
+    if(!A){try{A=await decodeAudioFF(m=>aProg(.1,m))}catch(e){console.warn('ff audio',e)}}
+    if(!A)throw new Error('Couldn’t read the audio in this video. Check your connection (the pro decoder downloads once) and try again.');
     S.sr=A.sr;S.orig=makeBuf(A.data.length,A.sr,1);S.orig.getChannelData(0).set(A.data);S.mono=S.orig.getChannelData(0);
     const vd=isFinite(V.duration)&&V.duration>0?V.duration:0,pd=P&&P.info?P.info.duration/P.info.timescale:0;
     S.dur=Math.min(S.orig.duration,vd||pd||S.orig.duration);
@@ -797,17 +883,27 @@ async function loadFile(file){
     await sleep(300);
     openEditor();
     const nf=S.cuts.filter(c=>c.k==='filler').length,np=S.cuts.length-nf;
-    toast(S.noPreview?'Found the cuts. This browser can’t preview HEVC, but export still works.':`Found ${np} pause${np===1?'':'s'} and ${nf} filler${nf===1?'':'s'}. Press play to preview.`,4200);
+    toast(S.needsFF?`Found ${np} pauses and ${nf} fillers. This is a pro camera format, so a smooth preview is being built on your device.`:`Found ${np} pause${np===1?'':'s'} and ${nf} filler${nf===1?'':'s'}. Press play to preview.`,5000);
   }catch(err){console.error(err);$('#ovA').hidden=true;toast(err.message||'Could not open this video.',6000)}
 }
+/* Can this browser actually decode the picture? Safari only loads metadata until play, so trust it unless it errors. */
+async function canPlayNative(){
+  await once(V,'loadedmetadata error',15000);if(V.error)return false;
+  if(IS_WEBKIT)return true;
+  if(V.readyState<2)await once(V,'loadeddata error',9000);
+  return !V.error&&V.videoWidth>0&&V.readyState>=2}
 async function checkPro(){
   const P=S.mp4;if(!P||!P.v||!P.vs||!P.vs.length||!window.VideoDecoder||!window.VideoEncoder||!window.Mp4Muxer||!window.AudioEncoder)return false;
   try{const s=await VideoDecoder.isConfigSupported({codec:P.v.codec,codedWidth:P.v.w,codedHeight:P.v.h,description:P.v.desc});return !!s.supported}catch(e){return false}}
 function openEditor(){
   $('#ovA').hidden=true;$('#land').hidden=true;$('#ed').hidden=false;$('#bNew').hidden=false;$('#bExportTop').hidden=false;
-  $('#nopv').hidden=!S.noPreview;
-  view.s=0;view.span=S.dur;V.currentTime=S.keeps[0]?S.keeps[0].s:0;sizeScreen();resizeTL();updateStats();updateOut();setAB(S.enh?'enh':'orig');
+  pvStatus(null);
+  view.s=0;view.span=S.dur;try{V.currentTime=S.keeps[0]?S.keeps[0].s:0}catch(e){}sizeScreen();resizeTL();updateStats();updateOut();setAB(S.enh?'enh':'orig');
+  segOn('eng',S.set.eng);$('#engF').hidden=S.pro||S.needsFF;
+  if(S.needsFF)buildProxy();
 }
+$('#pvBtn').onclick=()=>{S.proxy='none';buildProxy()};
+$('#fixpv').onclick=()=>{if(S.proxy==='ready'){toast('You’re already watching the compatible preview.');return}V.pause();S.needsFF=true;S.noPreview=true;$('#engF').hidden=S.pro;updateOut();buildProxy()};
 $('#bNew').onclick=()=>{if(S.exporting)return;V.pause();fileIn.click()};
 $('#home').onclick=e=>e.preventDefault();
 
@@ -824,6 +920,7 @@ V.addEventListener('seeked',()=>{if(!V.paused&&!S.exporting)aStart()});
 V.addEventListener('play',()=>setPlayIcon(true));V.addEventListener('pause',()=>setPlayIcon(false));
 function setPlayIcon(p){$('#bPlay use').setAttribute('href',p?'#i-pause':'#i-play');$('#bPlay').setAttribute('aria-label',p?'Pause':'Play')}
 async function togglePlay(){if(!S.orig)return;await ensureCtx();
+  if(S.noPreview){toast(S.proxy==='building'?'The preview is still being built. You can adjust cuts meanwhile.':'Preview isn’t available yet. Tap “Build preview” on the video.');return}
   if(V.paused){const last=S.keeps[S.keeps.length-1];if(V.ended||(last&&V.currentTime>=last.e-.05))V.currentTime=S.keeps[0]?S.keeps[0].s:0;
     try{await V.play()}catch(e){if(S.noPreview)toast('Video preview isn’t supported for this format here. Export still works.')}}else V.pause()}
 $('#bPlay').onclick=togglePlay;
@@ -877,25 +974,31 @@ function updateStats(){if(!S.dur)return;const fin=finalDur(),on=S.cuts.filter(c=
   $('#sO').textContent=fmt(S.dur);$('#sN').textContent=fmt(fin);$('#sS').textContent=`${fmt(S.dur-fin)} · ${Math.round((1-fin/S.dur)*100)}%`;$('#sC').textContent=on;updateOut()}
 
 /* ================= output planning ================= */
+/* engines: pro = hardware decode+encode (fast) · ff = on-device converter (any format, slower) · rec = real-time recorder */
+function engine(){if(S.pro)return 'pro';if(S.needsFF||!window.MediaRecorder)return 'ff';return S.set.eng==='ff'?'ff':'rec'}
 function outPlan(){
-  const vi=S.vinfo||{w:V.videoWidth||1280,h:V.videoHeight||720,rot:0,fps:30};
-  let w=vi.w,h=vi.h,rot=S.pro?vi.rot:0;
-  if(!S.pro&&V.videoWidth){w=V.videoWidth;h=V.videoHeight;rot=0}
-  const tgt=+S.set.up;let sc=tgt?Math.max(1,tgt/Math.min(w,h)):1;sc=Math.min(sc,4096/Math.max(w,h));if(!tgt)sc=Math.min(1,sc);
-  const W=even(w*sc),H=even(h*sc),fps=clamp(vi.fps||30,10,120),q=QUAL[S.set.quality];
-  const vbr=Math.round(clamp(W*H*fps*q.bpp,8e6,S.pro?200e6:80e6));
-  return {w,h,W,H,rot,fps,vbr,dw:rot%180?H:W,dh:rot%180?W:H,iw:rot%180?h:w,ih:rot%180?w:h,up:sc>1.001}}
+  const vi=S.vinfo||{w:V.videoWidth||1280,h:V.videoHeight||720,rot:0,fps:30},eng=engine(),r0=vi.rot||0;
+  const dW=r0%180?vi.h:vi.w,dH=r0%180?vi.w:vi.h;
+  let w,h,rot;if(eng==='pro'){w=vi.w;h=vi.h;rot=r0}else{w=dW;h=dH;rot=0}
+  const tgt=+S.set.up;let sc=tgt?tgt/Math.min(w,h):1;sc=Math.min(sc,4096/Math.max(w,h));
+  if(eng==='rec')sc=Math.min(sc,1920/Math.max(w,h));
+  const W=even(w*sc),H=even(h*sc),fps=clamp(frameRate()||vi.fps||30,10,120),q=QUAL[S.set.quality];
+  const vbr=Math.round(clamp(q.base*Math.pow(W*H*fps/(1920*1080*30),.8),6e6,eng==='rec'?60e6:200e6));
+  return {w,h,W,H,rot,fps,vbr,eng,dw:rot%180?H:W,dh:rot%180?W:H,iw:dW,ih:dH,up:sc>1.001,down:sc<.999}}
 function updateOut(){if(!S.dur)return;const p=outPlan(),fin=finalDur();
-  $('#rIn').textContent=`${p.iw}×${p.ih}`;$('#rOut').textContent=`${p.dw}×${p.dh}${p.up?'':' (same)'}`;
-  $('#xLen').textContent=fmt(fin,1);$('#xRes').textContent=`${p.dw}×${p.dh}`+(p.up?' · upscaled':'');
-  $('#xFmt').textContent=S.pro?'MP4 · H.264 High · AAC':(fmtLabel()+' · recorder');
+  const tag=p.up?' · upscaled':p.down?' · downscaled':'';
+  $('#rIn').textContent=`${p.iw}×${p.ih}`;$('#rOut').textContent=`${p.dw}×${p.dh}${p.up||p.down?'':' (same)'}`;
+  $('#xLen').textContent=fmt(fin,1);$('#xRes').textContent=`${p.dw}×${p.dh}${tag}`;
+  $('#xFmt').textContent=p.eng==='rec'?fmtLabel()+' · recorder':'MP4 · H.264 High · AAC';
   $('#xBr').textContent=`≈ ${Math.round(p.vbr/1e6)} Mbps`;$('#xSz').textContent='≈ '+mb((p.vbr+320000)*fin/8);
-  $('#xTime').textContent=S.pro?'Faster than real time on most devices':'Real time ≈ '+fmt(fin);
+  
+  $('#xTime').textContent=p.eng==='pro'?'Faster than real time':p.eng==='rec'?'Real time ≈ '+fmt(fin):`Slow · roughly ${fmt(fin*(((S.vinfo?S.vinfo.w*S.vinfo.h:2e6)>4e6?8:3)+(p.W*p.H>4e6?6:1)))}`;
   $('#qHelp').textContent=QUAL[S.set.quality].help;
   const big=(p.vbr*fin/8)>1.2e9&&!window.showSaveFilePicker;
-  $('#xNote').className='note'+(big?' warn':'');
-  $('#xNote').innerHTML=S.pro?(big?'<b>Big file for a phone.</b> If export fails, pick Ultra or High.':'Pro engine: every original frame is decoded and re-encoded at full quality. Cuts land exactly on frames.')
-    :'<b>Compatibility mode.</b> This browser can’t use the pro encoder for this file, so the video is recorded in real time. Keep this tab on screen until it finishes. Safari 17+ or Chrome gives the best results.'}
+  $('#xNote').className='note'+(big||p.eng==='ff'?' warn':'');
+  $('#xNote').innerHTML=p.eng==='pro'?(big?'<b>Big file for a phone.</b> If export fails, pick a lower resolution in Enhance or choose High.':'<b>Pro engine.</b> Every original frame is decoded and re-encoded at full quality. Cuts land exactly on frames.')
+    :p.eng==='ff'?'<b>Converter engine.</b> This browser has no hardware decoder for this pro camera format, so your device decodes it in software. It works and keeps full quality, but it’s slow for 4K. Choosing <b>1080p</b> in Enhance speeds it up. Opening this page in <b>Safari on iPhone or Mac</b> is much faster.'
+    :'<b>Real-time recorder.</b> The video plays through once while recording, so keep this tab on screen. Pick “Best quality” above for a slower, sharper export.'}
 
 /* ================= timeline ================= */
 const tlEl=$('#tl'),tlc=$('#tlc'),g2=tlc.getContext('2d');
@@ -970,7 +1073,8 @@ $$('.seg').forEach(seg=>seg.addEventListener('click',e=>{const b=e.target.closes
   else if(key==='voice'||key==='nr'){S.set[key]=v;if(key==='voice')$('#vHelp').textContent=VOICE_HELP[v];S.voiceDirty=true;refreshApply()}
   else if(key==='look'){S.set.look=v;Object.assign(S.set,LOOKS[v]);syncRanges();if(v!=='off'&&S.noPreview)toast('Preview isn’t available for this format here, but Enhance will apply on export.')}
   else if(key==='up'){S.set.up=+v;updateOut()}
-  else if(key==='quality'){S.set.quality=v;updateOut()}}));
+  else if(key==='quality'){S.set.quality=v;updateOut()}
+  else if(key==='eng'){S.set.eng=v;updateOut()}}));
 $('#swF').onclick=()=>{S.set.fillers=!S.set.fillers;$('#swF').classList.toggle('on',S.set.fillers);$('#swF').setAttribute('aria-checked',S.set.fillers);$('#fSensF').hidden=!S.set.fillers;reDetect()};
 $('#swPv').onclick=()=>{S.set.pv=!S.set.pv;$('#swPv').classList.toggle('on',S.set.pv);$('#swPv').setAttribute('aria-checked',S.set.pv)};
 $('#bRestore').onclick=()=>{S.set.pace='natural';Object.assign(S.set,PACE.natural,{level:0,fillers:true,fillerSens:'med'});segOn('pace','natural');segOn('fillerSens','med');
@@ -1011,12 +1115,14 @@ async function exportVideo(){
   if(S.exporting)return;if(!S.keeps.length){toast('Nothing left to export. Restore some cuts first.');return}
   const name=`${baseName()}_PROCUT.mp4`;
   let handle=null;
-  if(S.pro&&window.showSaveFilePicker){try{handle=await showSaveFilePicker({suggestedName:name,types:[{description:'MP4 video',accept:{'video/mp4':['.mp4']}}]})}catch(e){if(e&&e.name==='AbortError')return;handle=null}}
+  const eng=engine();
+  if(eng==='pro'&&window.showSaveFilePicker){try{handle=await showSaveFilePicker({suggestedName:name,types:[{description:'MP4 video',accept:{'video/mp4':['.mp4']}}]})}catch(e){if(e&&e.name==='AbortError')return;handle=null}}
   V.pause();aStop();S.exporting=true;X.cancel=false;X.blob=null;X.file=null;
   $('#ovX').hidden=false;$('#xBody').hidden=false;$('#xDone').hidden=true;$('#xTitle').textContent='Rendering';xProg(0,'Preparing…');$('#xLive').replaceChildren();
   try{
-    if(S.pro){try{await exportPro(handle,name);}catch(e){if(X.cancel)throw e;console.warn('pro export failed',e);
-        if(handle)throw e;toast('Switching to compatibility recorder…');S.pro=false;updateOut();await exportRecorder()}}
+    if(eng==='pro'){try{await exportPro(handle,name)}catch(e){if(X.cancel)throw e;console.warn('pro export failed',e);
+        if(handle)throw e;S.pro=false;updateOut();toast('Switching engines and trying again…');if(engine()==='ff')await exportFF(name);else await exportRecorder()}}
+    else if(eng==='ff')await exportFF(name);
     else await exportRecorder();
     if(X.cancel){$('#ovX').hidden=true;toast('Export canceled.');return}
     showDone();
@@ -1082,6 +1188,40 @@ async function exportPro(handle,name){
   xProg(1,'Done');
 }
 
+function wavBytes(data,sr){const len=data.length,ch=2,dv=new DataView(new ArrayBuffer(44+len*ch*2)),ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i))};
+  ws(0,'RIFF');dv.setUint32(4,36+len*ch*2,true);ws(8,'WAVE');ws(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,ch,true);
+  dv.setUint32(24,sr,true);dv.setUint32(28,sr*ch*2,true);dv.setUint16(32,ch*2,true);dv.setUint16(34,16,true);ws(36,'data');dv.setUint32(40,len*ch*2,true);
+  let o=44;for(let i=0;i<len;i++){const v=clamp(data[i],-1,1),s=v<0?v*32768:v*32767;dv.setInt16(o,s,true);dv.setInt16(o+2,s,true);o+=4}
+  return new Uint8Array(dv.buffer)}
+
+/* converter export: decodes the original in software, cuts on exact frames, applies Enhance, encodes high-bitrate H.264 */
+async function exportFF(name){
+  const plan=outPlan(),fr=frameRate()||plan.fps,total=finalDur(),expFrames=Math.max(1,Math.round(total*fr));
+  $('#xHint').textContent='Converter running on your device. Keep this tab open; the screen can stay on.';
+  const live=document.createElement('div');live.style.cssText='padding:22px;text-align:center;color:var(--muted);font-size:13px';
+  live.innerHTML='<svg width="40" height="40" style="display:block;margin:0 auto 10px"><use href="#emblem"/></svg>Decoding your camera file frame by frame…';$('#xLive').replaceChildren(live);
+  const ff=await getFF(m=>xProg(0,m));if(X.cancel)return;const inp=await ffInput(ff);
+  xProg(0,'Preparing audio…');const ca=cutAudio();await ff.writeFile('/cut.wav',wavBytes(ca.data,ca.sr));
+  const sel=S.keeps.map(k=>`between(t,${Math.max(0,k.s-.002).toFixed(4)},${(k.e-.004).toFixed(4)})`).join('+');
+  const fps=fr%1?`${Math.round(fr*1001)}/1001`:String(Math.round(fr));
+  const st=S.set,vf=[`select='${sel}'`,`setpts=N/(${fps})/TB`];
+  if(plan.down||plan.up)vf.push(`scale=${plan.W}:${plan.H}:flags=lanczos`);
+  if(st.dn>0){const a=(st.dn/100*4).toFixed(2),b=(st.dn/100*3).toFixed(2);vf.push(`hqdn3d=${a}:${b}:${b}:${b}`)}
+  if(st.sharp>0)vf.push(`unsharp=5:5:${(.3+st.sharp/100*1.2).toFixed(2)}:5:5:0`);
+  if(st.pop>0||st.vib>0)vf.push(`eq=contrast=${(1+st.pop/100*.16).toFixed(3)}:saturation=${(1+st.vib/100*.35).toFixed(3)}`);
+  vf.push('format=yuv420p');
+  await ff.writeFile('/vf.txt',new TextEncoder().encode(vf.join(',')));
+  const t0=performance.now();
+  FFH.onLog=m=>{const f=fParse(m);if(f!=null){const p=clamp(f/expFrames,0,1),el=(performance.now()-t0)/1000;
+    xProg(p*.97,`${fmt(f/fr)} of ${fmt(total)}${p>.02?' · '+fmt(el/p-el)+' left':''}`)}};
+  const vb=plan.vbr,args=['-i',inp,'-i','/cut.wav','-map','0:v:0','-map','1:a:0','-filter_script:v','/vf.txt','-r',fps,
+    '-c:v','libx264','-preset',S.set.quality==='master'?'veryfast':'superfast','-profile:v','high','-b:v',String(vb),'-maxrate',String(Math.round(vb*1.5)),'-bufsize',String(vb*2),
+    '-g',String(Math.round(fr)),'-c:a','aac','-b:a','320k','-ar','48000','-movflags','+faststart','-write_tmcd','0','-shortest','-y','/out.mp4'];
+  X.ff=ff;const code=await ff.exec(args);FFH.onLog=null;X.ff=null;
+  if(X.cancel)return;if(code!==0)throw new Error('the converter stopped (code '+code+')');
+  xProg(.99,'Saving…');const d=await ff.readFile('/out.mp4');for(const f of ['/out.mp4','/cut.wav','/vf.txt'])try{await ff.deleteFile(f)}catch(e){}
+  X.blob=new Blob([d],{type:'video/mp4'});X.name=name;X.res=`${plan.dw}×${plan.dh}`;X.dur=total;X.saved=false;xProg(1,'Done')}
+
 async function exportRecorder(){
   const mime=pickMime();if(mime===null)throw new Error('This browser can’t record video. Try Safari 17+ or Chrome.');
   $('#xHint').textContent='Recording in real time. Keep this tab open and on screen.';
@@ -1119,17 +1259,12 @@ function showDone(){const out=$('#xOut');if(out.src)URL.revokeObjectURL(out.src)
   $('#bShare').hidden=!canShare;$('#bSave').classList.toggle('primary',!canShare&&!X.saved);
   $('#xTitle').textContent='Export ready';$('#xBody').hidden=true;$('#xDone').hidden=false}
 $('#bExport').onclick=exportVideo;$('#bExportTop').onclick=exportVideo;
-$('#bCancel').onclick=()=>{X.cancel=true;$('#xLbl').textContent='Canceling…'};
+$('#bCancel').onclick=()=>{X.cancel=true;$('#xLbl').textContent='Canceling…';if(X.ff){try{X.ff.terminate()}catch(e){}X.ff=null;FFP=null;S.ffMounted=false;FFH.onLog=null}};
 $('#bSave').onclick=()=>{const f=X.file||X.blob;if(f)saveBlob(f,X.name)};
 $('#bShare').onclick=async()=>{const f=X.file||X.blob;if(!f)return;try{await navigator.share({files:[new File([f],X.name,{type:f.type||'video/mp4'})],title:X.name})}catch(e){if(e&&e.name!=='AbortError')saveBlob(f,X.name)}};
 $('#bCloseX').onclick=()=>{$('#ovX').hidden=true;$('#xOut').pause()};
 
-$('#bWav').onclick=()=>{if(!S.keeps.length)return;const {data,sr}=cutAudio(),len=data.length,ch=2;
-  const dv=new DataView(new ArrayBuffer(44+len*ch*2)),ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i))};
-  ws(0,'RIFF');dv.setUint32(4,36+len*ch*2,true);ws(8,'WAVE');ws(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,ch,true);
-  dv.setUint32(24,sr,true);dv.setUint32(28,sr*ch*2,true);dv.setUint16(32,ch*2,true);dv.setUint16(34,16,true);ws(36,'data');dv.setUint32(40,len*ch*2,true);
-  let o=44;for(let i=0;i<len;i++){const v=clamp(data[i],-1,1),s=v<0?v*32768:v*32767;dv.setInt16(o,s,true);dv.setInt16(o+2,s,true);o+=4}
-  saveBlob(new Blob([dv],{type:'audio/wav'}),`${baseName()}_PROCUT.wav`);toast('Audio saved as WAV.')};
+$('#bWav').onclick=()=>{if(!S.keeps.length)return;const {data,sr}=cutAudio();saveBlob(new Blob([wavBytes(data,sr)],{type:'audio/wav'}),`${baseName()}_PROCUT.wav`);toast('Audio saved as WAV.')};
 
 /* ================= guide + keys ================= */
 const openGuide=()=>{$('#ovG').hidden=false};const closeGuide=()=>{$('#ovG').hidden=true;try{localStorage.setItem('procut-guide-2','1')}catch(e){}};
