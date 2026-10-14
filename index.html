@@ -234,7 +234,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 </style>
 <script>
 /* startup safety net: if anything stops the app from starting, show the reason on screen instead of a blank page */
-window.PROCUT_VERSION='7.0';
+window.PROCUT_VERSION='7.1';
 window.addEventListener('error',function(e){try{if(window.PROCUT_READY)return;var b=document.getElementById('bootErr');if(!b){b=document.createElement('div');b.id='bootErr';
   b.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:99;background:#3a1416;color:#ffd9d6;border:1px solid #e2615a;border-radius:12px;padding:12px 14px;font:13px/1.4 -apple-system,sans-serif';document.body.appendChild(b)}
   b.textContent='PRO CUT couldn\'t start: '+(e.message||'script error')+' (line '+(e.lineno||'?')+'). The file may have been cut off while pasting. Re-upload index.html.'}catch(_){}});
@@ -365,7 +365,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
   </section>
 
   <aside class="side">
-    <div class="sidehead"><span>Inspector</span><span class="vchip" id="vchip">PRO CUT v7.0</span></div>
+    <div class="sidehead"><span>Inspector</span><span class="vchip" id="vchip">PRO CUT v7.1</span></div>
     <nav class="tabs" role="tablist">
       <button class="on" data-tab="cut"><svg class="ico"><use href="#i-blade"/></svg>Cut</button>
       <button data-tab="voice"><svg class="ico"><use href="#i-voice"/></svg>Voice</button>
@@ -551,7 +551,7 @@ window.addEventListener('load',function(){setTimeout(function(){if(window.PROCUT
 <!-- guide -->
 <div class="ov" id="ovG" hidden>
   <div class="card" role="dialog" aria-labelledby="gT">
-    <div class="ch"><svg width="26" height="26"><use href="#emblem"/></svg><h3 id="gT">How PRO CUT works <span class="tag" style="margin-left:6px;vertical-align:2px">v7.0</span></h3><button class="iconbtn" id="bCloseG" aria-label="Close guide"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="ch"><svg width="26" height="26"><use href="#emblem"/></svg><h3 id="gT">How PRO CUT works <span class="tag" style="margin-left:6px;vertical-align:2px">v7.1</span></h3><button class="iconbtn" id="bCloseG" aria-label="Close guide"><svg class="ico"><use href="#i-x"/></svg></button></div>
     <div class="cb">
       <div class="g-steps">
         <div class="g-step"><span class="n">1</span><div><h4>Tap New video</h4><p>The PRO CUT intro is preloaded. Tap <b>New video</b> and pick a clip from your gallery. Pro camera files get a one-tap editable copy.</p></div></div>
@@ -1217,10 +1217,10 @@ async function canPlayNative(){
   if(V.readyState<2)await once(V,'loadeddata error',9000);
   return !V.error&&V.videoWidth>0&&V.readyState>=2}
 async function checkPro(){
-  const P=S.mp4;if(!P||!P.v||!P.vs||!P.vs.length||!window.VideoDecoder||!window.VideoEncoder||!window.AudioEncoder)return false;
+  const P=S.mp4;if(!P||!P.v||!P.vs||!P.vs.length||!window.VideoDecoder||!window.VideoEncoder||!window.AudioData)return false;
   try{const d=await VideoDecoder.isConfigSupported({codec:P.v.codec,codedWidth:P.v.w,codedHeight:P.v.h,description:P.v.desc});if(!d.supported)return false;
     const e=await pickVideoEnc(even(Math.min(P.v.w,1920)),even(Math.min(P.v.h,1920)),30,8e6);if(!e)return false;
-    return !!(await pickAudioEnc(S.sr||48000))}catch(e){return false}}
+    return true}catch(e){return false}}
 function openEditor(){
   $('#ovA').hidden=true;$('#land').hidden=true;$('#ed').hidden=false;$('#bNew').hidden=false;$('#bExportTop').hidden=false;
   if(S.noPreview)pvStatus('No picture preview for this format in this browser. Cutting, voice and export still work.',-1);else pvStatus(null);
@@ -1315,7 +1315,7 @@ function updateOut(){if(!S.dur)return;const p=outPlan(),fin=finalDur();
   const tag=p.up?' · upscaled':p.down?' · downscaled':'';
   $('#rIn').textContent=`${p.iw}×${p.ih}`;$('#rOut').textContent=`${p.dw}×${p.dh}${p.up||p.down?'':' (same)'}`;
   $('#xLen').textContent=fmt(fin,1);$('#xRes').textContent=`${p.dw}×${p.dh}${tag}`;
-  $('#xFmt').textContent=p.eng==='rec'?fmtLabel()+' · recorder':'MP4 · H.264 High · AAC';
+  $('#xFmt').textContent=p.eng==='rec'?fmtLabel()+' · recorder':window.AudioEncoder?'MP4 · H.264 High · AAC':'MOV · H.264 High · studio PCM audio';
   $('#xBr').textContent=`≈ ${Math.round(p.vbr/1e6)} Mbps`;$('#xSz').textContent='≈ '+mb((p.vbr+320000)*fin/8);
   
   $('#xTime').textContent=p.eng==='pro'?'Faster than real time':p.eng==='rec'?'Real time ≈ '+fmt(fin):`Slow · roughly ${fmt(fin*(((S.vinfo?S.vinfo.w*S.vinfo.h:2e6)>4e6?8:3)+(p.W*p.H>4e6?6:1)))}`;
@@ -1438,14 +1438,21 @@ function xProg(p,lbl){$('#xBar').style.width=(clamp(p,0,1)*100).toFixed(1)+'%';$
 async function resample(data,sr,to){if(sr===to)return data;const C=window.OfflineAudioContext||window.webkitOfflineAudioContext;const oc=new C(1,Math.ceil(data.length*to/sr),to);
   const b=oc.createBuffer(1,data.length,sr);b.getChannelData(0).set(data);const s=oc.createBufferSource();s.buffer=b;s.connect(oc.destination);s.start();return (await oc.startRendering()).getChannelData(0)}
 
-async function pickAudioEnc(sr){const tries=[{codec:'mp4a.40.2',mux:'aac',sr,br:320000},{codec:'mp4a.40.2',mux:'aac',sr,br:256000},{codec:'mp4a.40.2',mux:'aac',sr:48000,br:256000},{codec:'opus',mux:'opus',sr:48000,br:256000}];
-  for(const t of tries){try{const s=await AudioEncoder.isConfigSupported({codec:t.codec,sampleRate:t.sr,numberOfChannels:2,bitrate:t.br});if(s.supported)return t}catch(e){}}return null}
+async function pickAudioEnc(sr){if(!window.AudioEncoder)return null;
+  for(const t of [{codec:'mp4a.40.2',mux:'aac',sr,br:320000},{codec:'mp4a.40.2',mux:'aac',sr,br:256000},{codec:'mp4a.40.2',mux:'aac',sr:48000,br:256000},{codec:'mp4a.40.2',mux:'aac',sr:44100,br:256000}]){
+    try{const cfg={codec:t.codec,sampleRate:t.sr,numberOfChannels:2,bitrate:t.br};const s=await AudioEncoder.isConfigSupported(cfg);if(!s.supported)continue;
+      // really encode a little silence: some browsers say "supported" but never output anything
+      let got=0;const e=new AudioEncoder({output:()=>{got++},error:()=>{}});e.configure(cfg);
+      for(let k=0;k<4;k++)e.encode(new AudioData({format:'f32-planar',sampleRate:t.sr,numberOfFrames:2048,numberOfChannels:2,timestamp:Math.round(k*2048/t.sr*1e6),data:new Float32Array(4096)}));
+      await Promise.race([e.flush(),sleep(3000)]);try{e.close()}catch(_){}if(got>0)return t}catch(e){}}
+  return null}
 async function pickVideoEnc(W,H,fps,vbr){const codecs=['avc1.640034','avc1.640033','avc1.640032','avc1.640028','avc1.4d0033','avc1.42003e'];
   for(const hw of ['prefer-hardware','no-preference'])for(const codec of codecs){const cfg={codec,width:W,height:H,bitrate:vbr,framerate:fps,bitrateMode:'variable',latencyMode:'quality',avc:{format:'avc'},hardwareAcceleration:hw};
     try{const s=await VideoEncoder.isConfigSupported(cfg);if(s.supported)return cfg}catch(e){}}
   for(const codec of codecs){const cfg={codec,width:W,height:H,bitrate:vbr,framerate:fps,avc:{format:'avc'}};try{const s=await VideoEncoder.isConfigSupported(cfg);if(s.supported)return cfg}catch(e){}}return null}
 
 async function exportVideo(){
+  try{if(actx&&actx.state!=='running')actx.resume()}catch(e){}
   if(S.exporting)return;if(!S.keeps.length){toast('Nothing left to export. Restore some cuts first.');return}
   const name=`${baseName()}_PROCUT.mp4`;
   let handle=null;
@@ -1474,21 +1481,25 @@ function fbox(type,v,f,...parts){return mbox(type,Uint8Array.of(v,(f>>16)&255,(f
 function rotMatrix(r){const c=Math.round(Math.cos(r*Math.PI/180)),s=Math.round(Math.sin(r*Math.PI/180));return [c*65536,s*65536,0,-s*65536,c*65536,0,0,0,1<<30]}
 class MiniMux{
   constructor(o){this.o=o;this.v={s:[],desc:null};this.a={s:[],desc:null};this.parts=[];this.pos=0;this.w=o.writable||null;this.q=Promise.resolve();
-    this.ftyp=mbox('ftyp',enc8('isom'),U32(512),enc8('isomiso2avc1mp41'));
+    this.pcm=o.audio&&o.audio.codec==='pcm';
+    this.ftyp=this.pcm?mbox('ftyp',enc8('qt  '),U32(0x20050300),enc8('qt  ')):mbox('ftyp',enc8('isom'),U32(512),enc8('isomiso2avc1mp41'));
     if(this.w){this.mdatAt=this.ftyp.length;this._write(catU8([this.ftyp,U32(1),enc8('mdat'),U64(0)]),0);this.base=this.ftyp.length+16}}
   _write(data,position){this.q=this.q.then(()=>this.w.write({type:'write',position,data}))}
   _add(tr,chunk,meta){const d=new Uint8Array(chunk.byteLength);chunk.copyTo(d);
     if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!tr.desc){const x=meta.decoderConfig.description;tr.desc=x instanceof ArrayBuffer?new Uint8Array(x.slice(0)):new Uint8Array(x.buffer.slice(x.byteOffset,x.byteOffset+x.byteLength))}
-    tr.s.push({off:this.pos,size:d.length,t:chunk.timestamp,dur:chunk.duration||0,key:chunk.type==='key'});
+    tr.s.push({off:this.pos,size:d.length,t:chunk.timestamp,dur:chunk.duration||0,key:chunk.type==='key',frames:chunk.frames||0});
     if(this.w)this._write(d,this.base+this.pos);else this.parts.push(d);this.pos+=d.length}
   addVideo(c,m){this._add(this.v,c,m)}addAudio(c,m){this._add(this.a,c,m)}
   _durs(s,scale,fallback){const t0=s.length?s[0].t:0;const out=[];for(let i=0;i<s.length;i++){const a=Math.round((s[i].t-t0)*scale/1e6),b=i+1<s.length?Math.round((s[i+1].t-t0)*scale/1e6):a+Math.max(1,Math.round((s[i].dur||fallback)*scale/1e6));out.push(Math.max(1,b-a))}return out}
-  _stbl(s,durs,entry,isV,base){const stts=[];for(const d of durs){const l=stts[stts.length-1];if(l&&l[1]===d)l[0]++;else stts.push([1,d])}
+  _stblPCM(s,entry,base){const total=s.reduce((a,x)=>a+x.frames,0),sc=[];s.forEach((x,i)=>{const l=sc[sc.length-1];if(!l||l[1]!==x.frames)sc.push([i+1,x.frames])});
+    return mbox('stbl',fbox('stsd',0,0,U32(1),entry),fbox('stts',0,0,U32(1),U32(total),U32(1)),fbox('stsc',0,0,U32(sc.length),...sc.map(([c,n])=>[U32(c),U32(n),U32(1)])),
+      fbox('stsz',0,0,U32(4),U32(total)),fbox('co64',0,0,U32(s.length),...s.map(x=>U64(base+x.off))))}
+  _stbl(s,durs,entry,isV,base){if(!isV&&this.pcm)return this._stblPCM(s,entry,base);const stts=[];for(const d of durs){const l=stts[stts.length-1];if(l&&l[1]===d)l[0]++;else stts.push([1,d])}
     const parts=[fbox('stsd',0,0,U32(1),entry),fbox('stts',0,0,U32(stts.length),...stts.map(([n,d])=>[U32(n),U32(d)])),
       fbox('stsc',0,0,U32(1),U32(1),U32(1),U32(1)),fbox('stsz',0,0,U32(0),U32(s.length),...s.map(x=>U32(x.size))),fbox('co64',0,0,U32(s.length),...s.map(x=>U64(base+x.off)))];
     if(isV){const k=[];s.forEach((x,i)=>{if(x.key)k.push(U32(i+1))});parts.splice(2,0,fbox('stss',0,0,U32(k.length),...k))}
     return mbox('stbl',...parts)}
-  _trak(id,isV,s,scale,entry,base,movieDur){const o=this.o,durs=this._durs(s,scale,isV?1e6/(o.fps||30):1e6*1024/scale),total=durs.reduce((a,b)=>a+b,0),mDur=Math.round(total/scale*1000);
+  _trak(id,isV,s,scale,entry,base,movieDur){const o=this.o,durs=this._durs(s,scale,isV?1e6/(o.fps||30):1e6*1024/scale),total=(!isV&&this.pcm)?s.reduce((a,x)=>a+x.frames,0):durs.reduce((a,b)=>a+b,0),mDur=Math.round(total/scale*1000);
     const mtx=isV?rotMatrix(o.rotation||0):rotMatrix(0);
     const tkhd=fbox('tkhd',0,3,U32(0),U32(0),U32(id),U32(0),U32(mDur),Z(8),U16(0),U16(isV?0:1),U16(isV?0:0x0100),U16(0),...mtx.map(I32),U32(isV?o.width*65536:0),U32(isV?o.height*65536:0));
     const mdhd=fbox('mdhd',0,0,U32(0),U32(0),U32(scale),U32(total),U16(0x55c4),U16(0));
@@ -1498,6 +1509,7 @@ class MiniMux{
     return {box:mbox('trak',tkhd,mbox('mdia',mdhd,hdlr,mbox('minf',mh,dinf,this._stbl(s,durs,entry,isV,base)))),ms:mDur}}
   _videoEntry(){const o=this.o;return mbox('avc1',Z(6),U16(1),Z(16),U16(o.width),U16(o.height),U32(0x480000),U32(0x480000),U32(0),U16(1),Z(32),U16(0x18),U16(0xffff),mbox('avcC',this.v.desc||new Uint8Array(0)))}
   _audioEntry(){const a=this.o.audio,ch=a.channels||2,sr=a.sampleRate,hdr=[Z(6),U16(1),Z(8),U16(ch),U16(16),U16(0),U16(0),U32((sr>=65536?0:sr)*65536)];
+    if(a.codec==='pcm')return mbox('sowt',...hdr);
     if(a.codec==='opus'){let pre=312;const d=this.a.desc;if(d&&d.length>=12&&String.fromCharCode(...d.subarray(0,8))==='OpusHead')pre=d[10]|(d[11]<<8);
       return mbox('Opus',...hdr,mbox('dOps',Uint8Array.of(0,ch),U16(pre),U32(48000),U16(0),Uint8Array.of(0)))}
     let asc=this.a.desc;if(!asc||!asc.length){const SR=[96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350];const i=Math.max(0,SR.indexOf(sr));asc=Uint8Array.of((2<<3)|(i>>1),((i&1)<<7)|(ch<<3))}
@@ -1511,21 +1523,27 @@ class MiniMux{
   async finalize(){
     if(this.w){const moov=this._moov(this.base);this._write(moov,this.base+this.pos);this._write(U64(this.pos+16),this.mdatAt+8);await this.q;return null}
     const probe=this._moov(0),base=this.ftyp.length+probe.length+16,moov=this._moov(base);
-    return new Blob([this.ftyp,moov,U32(1),enc8('mdat'),U64(this.pos+16),...this.parts],{type:'video/mp4'})}
+    return new Blob([this.ftyp,moov,U32(1),enc8('mdat'),U64(this.pos+16),...this.parts],{type:this.pcm?'video/quicktime':'video/mp4'})}
 }
 
 async function exportPro(handle,name){
   const P=S.mp4,plan=outPlan(),{W,H,fps,vbr,rot}=plan,vi=P.v,smp=P.vs,ts=P.vt.timescale;
   $('#xHint').textContent='Pro engine running. Keep this tab open.';
   const vcfg=await pickVideoEnc(W,H,fps,vbr);if(!vcfg)throw new Error('No H.264 encoder for '+W+'×'+H);
-  const ca=cutAudio();const ae=await pickAudioEnc(ca.sr);if(!ae)throw new Error('No audio encoder');
+  const ca=cutAudio();if(!ca.data.length)throw new Error('No audio to export');
+  // AAC when the browser can really encode it, otherwise uncompressed studio PCM in a .mov (plays everywhere on iPhone and Mac)
+  const aac=await pickAudioEnc(ca.sr),ae=aac||{mux:'pcm',sr:ca.sr};X.pcm=!aac;
+  if(X.pcm){name=name.replace(/\.mp4$/i,'.mov')}
   const adata=ae.sr===ca.sr?ca.data:await resample(ca.data,ca.sr,ae.sr);
   let writable=null;if(handle)writable=await handle.createWritable();
   const muxer=new MiniMux({width:W,height:H,rotation:rot,fps,audio:{codec:ae.mux,sampleRate:ae.sr,channels:2,bitrate:ae.br},writable});
   let fail=null;
   const venc=new VideoEncoder({output:(c,m)=>{try{muxer.addVideo(c,m)}catch(e){fail=e}},error:e=>{fail=e}});venc.configure(vcfg);
-  const aenc=new AudioEncoder({output:(c,m)=>{try{muxer.addAudio(c,m)}catch(e){fail=e}},error:e=>{fail=e}});
-  aenc.configure({codec:ae.codec,sampleRate:ae.sr,numberOfChannels:2,bitrate:ae.br});
+  let aenc;
+  if(aac){aenc=new AudioEncoder({output:(c,m)=>{try{muxer.addAudio(c,m)}catch(e){fail=e}},error:e=>{fail=e}});aenc.configure({codec:ae.codec,sampleRate:ae.sr,numberOfChannels:2,bitrate:ae.br})}
+  else aenc={encodeQueueSize:0,encode(ad){const n=ad.numberOfFrames,L=new Float32Array(n),R=new Float32Array(n);ad.copyTo(L,{planeIndex:0});ad.copyTo(R,{planeIndex:1});
+      const b=new Uint8Array(n*4),dv=new DataView(b.buffer);for(let i=0;i<n;i++){const l=clamp(L[i],-1,1),r=clamp(R[i],-1,1);dv.setInt16(i*4,l<0?l*32768:l*32767,true);dv.setInt16(i*4+2,r<0?r*32768:r*32767,true)}
+      muxer.addAudio({byteLength:b.length,copyTo:x=>x.set(b),timestamp:ad.timestamp,duration:Math.round(n/ae.sr*1e6),type:'key',frames:n});ad.close()},flush:async()=>{},close(){}};
   // timeline mapping
   const keeps=S.keeps,cum=[];let acc=0;for(const k of keeps){cum.push(acc);acc+=k.e-k.s}const total=acc;
   const mapT=t=>{let lo=0,hi=keeps.length-1;while(lo<=hi){const m=(lo+hi)>>1,k=keeps[m];if(t<k.s)hi=m-1;else if(t>=k.e)lo=m+1;else return cum[m]+(t-k.s)}return -1};
